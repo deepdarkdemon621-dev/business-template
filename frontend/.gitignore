@@ -1,10 +1,2 @@
-# TypeScript emit artifacts (tsc -b emits alongside source; vite does actual bundling)
 *.tsbuildinfo
 .tsc-out/
-# Emitted JS/d.ts alongside source files (tsc -b without outDir)
-src/**/*.js
-src/**/*.d.ts
-vite.config.js
-vite.config.d.ts
-vitest.config.js
-vitest.config.d.ts
