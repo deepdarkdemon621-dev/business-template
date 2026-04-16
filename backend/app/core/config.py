@@ -13,7 +13,7 @@ class Settings(BaseSettings):
         extra="ignore",
     )
 
-    app_env: Literal["dev", "staging", "prod"] = "dev"
+    app_env: Literal["dev", "staging", "prod", "test"] = "dev"
     secret_key: str = Field(min_length=32)
 
     postgres_host: str = "db"
