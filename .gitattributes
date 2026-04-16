@@ -1,0 +1,31 @@
+# Normalize line endings: LF in repo, honor .editorconfig / core.autocrlf on checkout.
+# Text files are auto-detected; everything committed is stored with LF.
+* text=auto eol=lf
+
+# Explicitly mark common source types as text (defensive)
+*.py    text eol=lf
+*.ts    text eol=lf
+*.tsx   text eol=lf
+*.js    text eol=lf
+*.jsx   text eol=lf
+*.json  text eol=lf
+*.md    text eol=lf
+*.yml   text eol=lf
+*.yaml  text eol=lf
+*.toml  text eol=lf
+*.sh    text eol=lf
+*.sql   text eol=lf
+*.html  text eol=lf
+*.css   text eol=lf
+*.conf  text eol=lf
+
+# Binaries — no text conversion
+*.png   binary
+*.jpg   binary
+*.jpeg  binary
+*.gif   binary
+*.ico   binary
+*.pdf   binary
+*.zip   binary
+*.gz    binary
+*.lock  -text

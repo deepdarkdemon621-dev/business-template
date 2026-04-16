@@ -1,4 +1,7 @@
 from functools import lru_cache
+from typing import Literal
+from urllib.parse import quote_plus
+
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -10,7 +13,7 @@ class Settings(BaseSettings):
         extra="ignore",
     )
 
-    app_env: str = Field(default="dev")
+    app_env: Literal["dev", "staging", "prod"] = "dev"
     secret_key: str = Field(min_length=32)
 
     postgres_host: str = "db"
@@ -46,8 +49,10 @@ class Settings(BaseSettings):
 
     @property
     def postgres_dsn(self) -> str:
+        user = quote_plus(self.postgres_user)
+        password = quote_plus(self.postgres_password)
         return (
-            f"postgresql+asyncpg://{self.postgres_user}:{self.postgres_password}"
+            f"postgresql+asyncpg://{user}:{password}"
             f"@{self.postgres_host}:{self.postgres_port}/{self.postgres_db}"
         )
 
