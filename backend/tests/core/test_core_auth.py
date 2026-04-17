@@ -111,3 +111,121 @@ async def test_record_and_clear_failed_login():
 async def test_captcha_hook_returns_true():
     assert await verify_captcha(None) is True
     assert await verify_captcha("any-token") is True
+
+
+import sys
+import types
+from types import SimpleNamespace
+from app.core.auth import get_current_user
+from app.core.errors import ProblemDetails
+
+
+class _StubUserModule:
+    """
+    Context manager that:
+    1. Stubs app.modules.auth.models in sys.modules so the deferred import resolves.
+    2. Makes `User` a MagicMock so attribute access (User.id) works without SQLAlchemy.
+    3. Patches app.core.auth.select to return a MagicMock so SQLAlchemy's ORM
+       coercion is bypassed entirely.
+    """
+
+    def __init__(self):
+        from unittest.mock import MagicMock, patch
+
+        # User must support attribute access like User.id — use MagicMock as the class
+        self._fake_models = types.ModuleType("app.modules.auth.models")
+        self._fake_models.User = MagicMock()  # type: ignore[attr-defined]
+        self._fake_auth_pkg = types.ModuleType("app.modules.auth")
+        self._patch_modules = patch.dict(
+            sys.modules,
+            {
+                "app.modules.auth": self._fake_auth_pkg,
+                "app.modules.auth.models": self._fake_models,
+            },
+        )
+        # Replace `select` in auth.py so it never touches SQLAlchemy coercion
+        self._patch_select = patch("app.core.auth.select", return_value=MagicMock())
+
+    def __enter__(self):
+        self._patch_modules.__enter__()
+        self._patch_select.__enter__()
+        return self
+
+    def __exit__(self, *args):
+        self._patch_select.__exit__(*args)
+        self._patch_modules.__exit__(*args)
+
+
+def _stub_user_module():
+    """Return a context manager that stubs the User import and select() call."""
+    return _StubUserModule()
+
+
+def _make_execute_result(user):
+    """
+    Build a mock that looks like a SQLAlchemy Result.
+    scalar_one_or_none() is synchronous in SQLAlchemy; MagicMock (not AsyncMock)
+    is needed so calling it returns the value directly, not a coroutine.
+    """
+    from unittest.mock import MagicMock
+
+    result_mock = MagicMock()
+    result_mock.scalar_one_or_none.return_value = user
+    return result_mock
+
+
+@pytest.mark.asyncio
+async def test_get_current_user_valid_token():
+    token = create_access_token(sub="user-uuid-1")
+    user = SimpleNamespace(id="user-uuid-1", is_active=True)
+
+    session = AsyncMock()
+    session.execute.return_value = _make_execute_result(user)
+
+    with _stub_user_module():
+        result = await get_current_user(
+            authorization=f"Bearer {token}",
+            session=session,
+        )
+    assert result.id == "user-uuid-1"
+
+
+@pytest.mark.asyncio
+async def test_get_current_user_missing_bearer():
+    session = AsyncMock()
+    with pytest.raises(ProblemDetails) as ei:
+        await get_current_user(authorization="bad-header", session=session)
+    assert ei.value.code == "auth.invalid-token"
+
+
+@pytest.mark.asyncio
+async def test_get_current_user_inactive_user():
+    token = create_access_token(sub="user-uuid-2")
+    user = SimpleNamespace(id="user-uuid-2", is_active=False)
+
+    session = AsyncMock()
+    session.execute.return_value = _make_execute_result(user)
+
+    with _stub_user_module():
+        with pytest.raises(ProblemDetails) as ei:
+            await get_current_user(
+                authorization=f"Bearer {token}",
+                session=session,
+            )
+    assert ei.value.code == "auth.inactive-user"
+
+
+@pytest.mark.asyncio
+async def test_get_current_user_user_not_found():
+    token = create_access_token(sub="nonexistent")
+
+    session = AsyncMock()
+    session.execute.return_value = _make_execute_result(None)
+
+    with _stub_user_module():
+        with pytest.raises(ProblemDetails) as ei:
+            await get_current_user(
+                authorization=f"Bearer {token}",
+                session=session,
+            )
+    assert ei.value.code == "auth.invalid-token"

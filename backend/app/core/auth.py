@@ -3,10 +3,13 @@ from __future__ import annotations
 import time
 import uuid
 from dataclasses import dataclass
+from typing import Any
 
 from jose import JWTError, jwt
 from passlib.context import CryptContext
 from redis.asyncio import Redis
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import get_settings
 from app.core.errors import ProblemDetails
@@ -94,3 +97,37 @@ async def clear_failed_logins(redis: Redis, email: str) -> None:
 
 async def verify_captcha(token: str | None) -> bool:
     return True
+
+
+async def get_current_user(
+    authorization: str,
+    session: AsyncSession,
+) -> Any:
+    if not authorization.startswith("Bearer "):
+        raise ProblemDetails(
+            code="auth.invalid-token",
+            status=401,
+            detail="Missing or malformed Authorization header.",
+        )
+
+    token = authorization.removeprefix("Bearer ")
+    payload = decode_access_token(token)
+
+    # Deferred import to avoid circular deps (User model in modules/auth)
+    from app.modules.auth.models import User
+
+    result = await session.execute(select(User).where(User.id == payload.sub))
+    user = result.scalar_one_or_none()
+    if user is None:
+        raise ProblemDetails(
+            code="auth.invalid-token",
+            status=401,
+            detail="User not found.",
+        )
+    if not user.is_active:
+        raise ProblemDetails(
+            code="auth.inactive-user",
+            status=403,
+            detail="User account is disabled.",
+        )
+    return user
