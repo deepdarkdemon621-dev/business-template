@@ -1,4 +1,4 @@
-import { type ReactNode, useMemo } from "react";
+import { type ReactNode, type ReactElement, useMemo } from "react";
 import { FormProvider, useForm } from "react-hook-form";
 import { makeResolver } from "./resolver";
 import { resolveFieldComponent } from "./FieldRegistry";
@@ -12,7 +12,7 @@ export interface FormRendererProps<T extends Record<string, unknown>> {
 
 export function FormRenderer<T extends Record<string, unknown>>(
   props: FormRendererProps<T>,
-): JSX.Element {
+): ReactElement {
   const { schema, defaultValues, onSubmit, children } = props;
   const resolver = useMemo(() => makeResolver(schema), [schema]);
 

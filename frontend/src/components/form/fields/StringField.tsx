@@ -1,23 +1,21 @@
-import { forwardRef } from "react";
+import type { UseFormRegister } from "react-hook-form";
 import { Input } from "@/components/ui/input";
 
 export interface FieldProps {
   name: string;
   schema: Record<string, unknown>;
-  register: any;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- schema-driven: field names are runtime strings, not static Path<T>
+  register: UseFormRegister<any>;
   error?: string;
 }
 
-export const StringField = forwardRef<HTMLInputElement, FieldProps>(function StringField(
-  { name, schema, register, error },
-  ref,
-) {
+export function StringField({ name, schema, register, error }: FieldProps) {
   return (
     <div className="flex flex-col gap-1">
       <label htmlFor={name} className="text-sm font-medium">
         {(schema.title as string) ?? name}
       </label>
-      <Input id={name} ref={ref} {...register(name)} />
+      <Input id={name} {...register(name)} />
       {error && (
         <span role="alert" className="text-sm text-red-600">
           {error}
@@ -25,5 +23,4 @@ export const StringField = forwardRef<HTMLInputElement, FieldProps>(function Str
       )}
     </div>
   );
-});
-StringField.displayName = "StringField";
+}

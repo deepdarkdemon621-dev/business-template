@@ -24,9 +24,12 @@ class NoDependents:
         self.fk_col = fk_col
 
     async def check(self, session: AsyncSession, instance: Any) -> None:
-        stmt = select(func.count()).select_from(
-            text(self.relation)
-        ).where(text(f"{self.fk_col} = :pk")).params(pk=instance.id)
+        stmt = (
+            select(func.count())
+            .select_from(text(self.relation))
+            .where(text(f"{self.fk_col} = :pk"))
+            .params(pk=instance.id)
+        )
         count = (await session.execute(stmt)).scalar_one()
         if count > 0:
             raise GuardViolationError(

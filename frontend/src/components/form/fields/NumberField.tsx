@@ -1,11 +1,7 @@
-import { forwardRef } from "react";
 import { Input } from "@/components/ui/input";
 import type { FieldProps } from "./StringField";
 
-export const NumberField = forwardRef<HTMLInputElement, FieldProps>(function NumberField(
-  { name, schema, register, error },
-  ref,
-) {
+export function NumberField({ name, schema, register, error }: FieldProps) {
   const min = schema.minimum as number | undefined;
   const max = schema.maximum as number | undefined;
   return (
@@ -16,7 +12,6 @@ export const NumberField = forwardRef<HTMLInputElement, FieldProps>(function Num
       <Input
         id={name}
         type="number"
-        ref={ref}
         {...register(name, { valueAsNumber: true })}
         {...(min !== undefined ? { min } : {})}
         {...(max !== undefined ? { max } : {})}
@@ -24,5 +19,4 @@ export const NumberField = forwardRef<HTMLInputElement, FieldProps>(function Num
       {error && <span role="alert" className="text-sm text-red-600">{error}</span>}
     </div>
   );
-});
-NumberField.displayName = "NumberField";
+}

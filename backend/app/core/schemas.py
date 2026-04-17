@@ -55,9 +55,7 @@ class BaseSchema(BaseModel):
         # model — no need to touch __pydantic_decorators__ directly.
         validator_fn = _build_rules_validator(rules)
         info = ModelValidatorDecoratorInfo(mode="after")
-        proxy = PydanticDescriptorProxy(
-            wrapped=validator_fn, decorator_info=info, shim=None
-        )
+        proxy = PydanticDescriptorProxy(wrapped=validator_fn, decorator_info=info, shim=None)
         cls._form_rules_validator = proxy  # type: ignore[attr-defined]
 
         # --- 2. Inject json_schema_extra with x-rules metadata ---

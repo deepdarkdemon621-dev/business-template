@@ -2,6 +2,7 @@
 and assert the composed behavior. Intentionally throwaway — Plan 3's first
 real endpoint supersedes it.
 """
+
 from typing import Annotated
 from unittest.mock import AsyncMock, MagicMock
 
@@ -47,6 +48,7 @@ def _make_app_and_session():
         pq: Annotated[PageQuery, Depends()],
     ):
         from sqlalchemy import select
+
         stmt = select(1)  # placeholder — mock handles the actual return
         return await paginate(s, stmt, pq)
 
@@ -64,7 +66,7 @@ def _make_app_and_session():
                 status=409,
                 detail="Cannot delete item with dependents.",
                 guard_violation=GuardViolationCtx(guard="NoDependents", params=e.ctx),
-            )
+            ) from e
 
     return TestClient(app), session
 

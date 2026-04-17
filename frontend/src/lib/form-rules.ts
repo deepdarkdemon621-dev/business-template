@@ -38,7 +38,7 @@ export function registerRuleKeywords(ajv: Ajv): void {
       if (typeof s !== "string" || typeof e !== "string") return false;
       const ok = new Date(e) > new Date(s);
       if (!ok) {
-        // @ts-expect-error
+        // @ts-expect-error — Ajv attaches errors on the function
         dateOrder.errors = [
           { keyword: "dateOrder", message: `${params.end} must be after ${params.start}`, params },
         ];

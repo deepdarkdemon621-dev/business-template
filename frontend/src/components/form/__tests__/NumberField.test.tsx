@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { useForm } from "react-hook-form";
 import { NumberField } from "../fields/NumberField";
 
-function Harness({ name, schema }: { name: string; schema: any }) {
+function Harness({ name, schema }: { name: string; schema: Record<string, unknown> }) {
   const { register } = useForm();
   return <NumberField name={name} schema={schema} register={register} />;
 }
