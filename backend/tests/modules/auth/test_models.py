@@ -10,8 +10,15 @@ def test_user_table_name():
 def test_user_has_expected_columns():
     cols = {c.name for c in inspect(User).columns}
     expected = {
-        "id", "email", "password_hash", "full_name", "department_id",
-        "is_active", "must_change_password", "created_at", "updated_at",
+        "id",
+        "email",
+        "password_hash",
+        "full_name",
+        "department_id",
+        "is_active",
+        "must_change_password",
+        "created_at",
+        "updated_at",
     }
     assert expected <= cols
 
@@ -23,7 +30,12 @@ def test_user_session_table_name():
 def test_user_session_has_expected_columns():
     cols = {c.name for c in inspect(UserSession).columns}
     expected = {
-        "id", "user_id", "device_label", "ip_address",
-        "created_at", "last_used_at", "expires_at",
+        "id",
+        "user_id",
+        "device_label",
+        "ip_address",
+        "created_at",
+        "last_used_at",
+        "expires_at",
     }
     assert expected <= cols

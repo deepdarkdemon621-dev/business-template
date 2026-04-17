@@ -43,6 +43,12 @@ select = ["E", "F", "I", "B", "UP", "W", "C4", "SIM", "ASYNC"]
 # safely reformat (e.g., long URLs in strings).
 ignore = ["E501"]
 
+[tool.ruff.lint.per-file-ignores]
+"alembic/**" = ["E402", "I001", "UP007", "UP035"]
+"tests/**" = ["E402", "B017", "SIM117"]
+"app/modules/*/router.py" = ["B008"]
+"app/core/auth.py" = ["B008"]
+
 [tool.mypy]
 python_version = "3.13"
 strict = true

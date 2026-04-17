@@ -1,6 +1,7 @@
 import time
 
 import pytest
+
 from app.core.auth import (
     TokenPayload,
     create_access_token,
@@ -37,8 +38,9 @@ def test_create_and_decode_access_token():
 
 
 def test_decode_expired_token_raises():
-    from app.core.config import get_settings
     from jose import jwt
+
+    from app.core.config import get_settings
 
     settings = get_settings()
     now = int(time.time()) - 100
@@ -116,6 +118,7 @@ async def test_captcha_hook_returns_true():
 import sys
 import types
 from types import SimpleNamespace
+
 from app.core.auth import get_current_user
 from app.core.errors import ProblemDetails
 
@@ -206,12 +209,11 @@ async def test_get_current_user_inactive_user():
     session = AsyncMock()
     session.execute.return_value = _make_execute_result(user)
 
-    with _stub_user_module():
-        with pytest.raises(ProblemDetails) as ei:
-            await get_current_user(
-                authorization=f"Bearer {token}",
-                session=session,
-            )
+    with _stub_user_module(), pytest.raises(ProblemDetails) as ei:
+        await get_current_user(
+            authorization=f"Bearer {token}",
+            session=session,
+        )
     assert ei.value.code == "auth.inactive-user"
 
 
@@ -222,10 +224,9 @@ async def test_get_current_user_user_not_found():
     session = AsyncMock()
     session.execute.return_value = _make_execute_result(None)
 
-    with _stub_user_module():
-        with pytest.raises(ProblemDetails) as ei:
-            await get_current_user(
-                authorization=f"Bearer {token}",
-                session=session,
-            )
+    with _stub_user_module(), pytest.raises(ProblemDetails) as ei:
+        await get_current_user(
+            authorization=f"Bearer {token}",
+            session=session,
+        )
     assert ei.value.code == "auth.invalid-token"

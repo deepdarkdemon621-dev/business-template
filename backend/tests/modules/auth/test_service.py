@@ -142,9 +142,7 @@ async def test_refresh_success(svc, db, redis):
         mock_crud.get_session_by_id = AsyncMock(return_value=session_obj)
         mock_crud.create_session = AsyncMock(return_value=new_session)
         mock_crud.delete_session = AsyncMock()
-        result = await svc.refresh(
-            db=db, redis=redis, jti=str(jti), signed=_sign_jti(str(jti))
-        )
+        result = await svc.refresh(db=db, redis=redis, jti=str(jti), signed=_sign_jti(str(jti)))
     assert "access_token" in result
 
 
@@ -159,9 +157,7 @@ async def test_refresh_denylisted(svc, db, redis):
 @pytest.mark.asyncio
 async def test_logout(svc, db, redis):
     jti = uuid.uuid4()
-    session_obj = MagicMock(
-        id=jti, expires_at=datetime.now(tz=UTC) + timedelta(days=5)
-    )
+    session_obj = MagicMock(id=jti, expires_at=datetime.now(tz=UTC) + timedelta(days=5))
     with patch("app.modules.auth.service.crud") as mock_crud:
         mock_crud.get_session_by_id = AsyncMock(return_value=session_obj)
         mock_crud.delete_session = AsyncMock()
@@ -189,9 +185,7 @@ async def test_change_password_wrong_current(svc, db):
     user = MagicMock(password_hash="$argon2id$...")
     with patch("app.modules.auth.service.verify_password", return_value=False):
         with pytest.raises(ProblemDetails) as ei:
-            await svc.change_password(
-                db=db, user=user, current_password="wrong", new_password="x"
-            )
+            await svc.change_password(db=db, user=user, current_password="wrong", new_password="x")
     assert ei.value.code == "auth.invalid-credentials"
 
 
@@ -241,9 +235,7 @@ async def test_confirm_password_reset(svc, db, redis):
 async def test_confirm_password_reset_invalid_token(svc, db, redis):
     redis.get.return_value = None
     with pytest.raises(ProblemDetails) as ei:
-        await svc.confirm_password_reset(
-            db=db, redis=redis, token="bad-tok", new_password="x"
-        )
+        await svc.confirm_password_reset(db=db, redis=redis, token="bad-tok", new_password="x")
     assert ei.value.code == "auth.reset-token-invalid"
 
 
@@ -259,9 +251,7 @@ async def test_list_sessions(svc, db):
 @pytest.mark.asyncio
 async def test_revoke_session(svc, db, redis):
     jti = uuid.uuid4()
-    session_obj = MagicMock(
-        id=jti, expires_at=datetime.now(tz=UTC) + timedelta(days=3)
-    )
+    session_obj = MagicMock(id=jti, expires_at=datetime.now(tz=UTC) + timedelta(days=3))
     with patch("app.modules.auth.service.crud") as mock_crud:
         mock_crud.get_session_by_id = AsyncMock(return_value=session_obj)
         mock_crud.delete_session = AsyncMock()

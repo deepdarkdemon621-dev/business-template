@@ -3,9 +3,6 @@ from app.modules.auth.schemas import (
     LoginResponse,
     PasswordChangeRequest,
     PasswordResetConfirmRequest,
-    PasswordResetRequest,
-    SessionRead,
-    TokenResponse,
     UserRead,
 )
 

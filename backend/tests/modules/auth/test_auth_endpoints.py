@@ -43,7 +43,9 @@ async def truncate_tables():
     async with engine.begin() as conn:
         # CASCADE handles the FK from user_sessions → users
         await conn.execute(
-            __import__("sqlalchemy").text("TRUNCATE TABLE user_sessions, users RESTART IDENTITY CASCADE")
+            __import__("sqlalchemy").text(
+                "TRUNCATE TABLE user_sessions, users RESTART IDENTITY CASCADE"
+            )
         )
 
 

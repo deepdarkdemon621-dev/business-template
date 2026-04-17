@@ -8,5 +8,5 @@ _settings = get_settings()
 redis_pool = Redis(host=_settings.redis_host, port=_settings.redis_port, decode_responses=True)
 
 
-async def get_redis() -> AsyncGenerator[Redis, None]:
+async def get_redis() -> AsyncGenerator[Redis]:
     yield redis_pool

@@ -68,8 +68,6 @@ def test_schema_without_rules_has_no_x_rules_key():
 # --- password_policy tests ---
 from types import SimpleNamespace
 
-import pytest
-
 from app.core.form_rules import password_policy
 
 

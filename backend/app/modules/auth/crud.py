@@ -59,9 +59,7 @@ async def delete_session(session: AsyncSession, jti: uuid.UUID) -> None:
 
 
 async def delete_user_sessions(session: AsyncSession, user_id: uuid.UUID) -> list[UserSession]:
-    result = await session.execute(
-        select(UserSession).where(UserSession.user_id == user_id)
-    )
+    result = await session.execute(select(UserSession).where(UserSession.user_id == user_id))
     sessions = list(result.scalars().all())
     if sessions:
         await session.execute(delete(UserSession).where(UserSession.user_id == user_id))

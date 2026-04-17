@@ -15,6 +15,6 @@ engine = create_async_engine(_settings.postgres_dsn, echo=(_settings.app_env == 
 async_session = async_sessionmaker(engine, expire_on_commit=False)
 
 
-async def get_session() -> AsyncGenerator[AsyncSession, None]:
+async def get_session() -> AsyncGenerator[AsyncSession]:
     async with async_session() as session:
         yield session

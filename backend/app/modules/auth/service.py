@@ -43,7 +43,6 @@ def _verify_signed_jti(signed: str, jti: str) -> bool:
 
 
 class AuthService:
-
     async def login(
         self,
         *,

@@ -6,11 +6,7 @@ import pytest
 
 from app.modules.auth.crud import (
     create_session,
-    delete_session,
-    delete_user_sessions,
-    get_session_by_id,
     get_user_by_email,
-    get_user_sessions,
     update_user_password,
 )
 
