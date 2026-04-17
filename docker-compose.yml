@@ -31,7 +31,7 @@ services:
       MINIO_ROOT_USER: ${S3_ACCESS_KEY:-minioadmin}
       MINIO_ROOT_PASSWORD: ${S3_SECRET_KEY:-minioadmin}
     ports:
-      - "9001:9001"
+      - "19001:9001"
     volumes:
       - minio-data:/data
     healthcheck:
@@ -54,7 +54,7 @@ services:
   mailhog:
     image: mailhog/mailhog:latest
     ports:
-      - "8025:8025"  # web UI
+      - "18025:8025"  # web UI
 
   backend:
     build: ./backend
