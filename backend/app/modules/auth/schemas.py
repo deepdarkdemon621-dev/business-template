@@ -3,7 +3,7 @@ from __future__ import annotations
 import uuid
 from datetime import datetime
 
-from app.core.form_rules import must_match
+from app.core.form_rules import must_match, password_policy
 from app.core.schemas import BaseSchema
 
 
@@ -37,7 +37,7 @@ class LoginResponse(BaseSchema):
 
 
 class PasswordChangeRequest(BaseSchema):
-    __rules__ = [must_match(a="new_password", b="confirm")]
+    __rules__ = [must_match(a="new_password", b="confirm"), password_policy(field="new_password")]
 
     current_password: str
     new_password: str
@@ -49,7 +49,7 @@ class PasswordResetRequest(BaseSchema):
 
 
 class PasswordResetConfirmRequest(BaseSchema):
-    __rules__ = [must_match(a="new_password", b="confirm")]
+    __rules__ = [must_match(a="new_password", b="confirm"), password_policy(field="new_password")]
 
     token: str
     new_password: str

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { client } from "@/api/client";
+import type { Page } from "@/lib/pagination";
 
 interface Session {
   id: string;
@@ -17,8 +18,10 @@ export function SessionsPage() {
 
   const loadSessions = useCallback(async () => {
     setLoading(true);
-    const { data } = await client.get<Session[]>("/me/sessions");
-    setSessions(data);
+    const { data } = await client.get<Page<Session>>("/me/sessions", {
+      params: { page: 1, size: 50 },
+    });
+    setSessions(data.items);
     setLoading(false);
   }, []);
 
