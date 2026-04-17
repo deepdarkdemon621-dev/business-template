@@ -22,7 +22,10 @@ run "todo"           bash scripts/audit/audit_todo.sh
 run "mock-leak"      bash scripts/audit/audit_mock_leak.sh
 run "json-schema"    bash scripts/audit/audit_json_schema.sh
 run "mui-imports"    bash scripts/audit/audit_mui_imports.sh
-run "pagination-fe"  bash scripts/audit/audit_pagination_fe.sh
+run "pagination-fe"    bash scripts/audit/audit_pagination_fe.sh
+run "httpexception"    bash scripts/audit/audit_httpexception.sh
+run "scalars-all"      bash scripts/audit/audit_scalars_all.sh
+run "handwritten-form" bash scripts/audit/audit_handwritten_form.sh
 
 if command -v python >/dev/null 2>&1; then
     run "permissions"   python scripts/audit/audit_permissions.py
