@@ -63,3 +63,39 @@ def test_schema_without_rules_has_no_x_rules_key():
         name: str
 
     assert "x-rules" not in _Plain.model_json_schema()
+
+
+# --- password_policy tests ---
+from types import SimpleNamespace
+
+import pytest
+
+from app.core.form_rules import password_policy
+
+
+def test_password_policy_rule_spec():
+    spec = password_policy("new_password")
+    assert spec.name == "passwordPolicy"
+
+
+def test_password_policy_passes_valid():
+    spec = password_policy("new_password")
+    spec.validate(SimpleNamespace(new_password="MySecret123"))  # no raise
+
+
+def test_password_policy_fails_too_short():
+    spec = password_policy("new_password")
+    with pytest.raises(ValueError, match="10 characters"):
+        spec.validate(SimpleNamespace(new_password="Ab1"))
+
+
+def test_password_policy_fails_no_digit():
+    spec = password_policy("new_password")
+    with pytest.raises(ValueError, match="1 letter"):
+        spec.validate(SimpleNamespace(new_password="abcdefghijk"))
+
+
+def test_password_policy_fails_no_letter():
+    spec = password_policy("new_password")
+    with pytest.raises(ValueError, match="1 digit"):
+        spec.validate(SimpleNamespace(new_password="1234567890"))

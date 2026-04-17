@@ -37,3 +37,35 @@ describe("ajv singleton", () => {
     expect(validate({ startsOn: "2026-04-01" })).toBe(true);
   });
 });
+
+describe("passwordPolicy keyword", () => {
+  it("passes valid password", () => {
+    const schema = {
+      type: "object",
+      properties: { newPassword: { type: "string" } },
+      passwordPolicy: { field: "newPassword" },
+    };
+    const validate = ajv.compile(schema);
+    expect(validate({ newPassword: "MySecret123" })).toBe(true);
+  });
+
+  it("rejects password too short", () => {
+    const schema = {
+      type: "object",
+      properties: { newPassword: { type: "string" } },
+      passwordPolicy: { field: "newPassword" },
+    };
+    const validate = ajv.compile(schema);
+    expect(validate({ newPassword: "Ab1" })).toBe(false);
+  });
+
+  it("rejects password without digit", () => {
+    const schema = {
+      type: "object",
+      properties: { newPassword: { type: "string" } },
+      passwordPolicy: { field: "newPassword" },
+    };
+    const validate = ajv.compile(schema);
+    expect(validate({ newPassword: "abcdefghijk" })).toBe(false);
+  });
+});

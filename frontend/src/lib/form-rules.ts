@@ -28,6 +28,34 @@ export function registerRuleKeywords(ajv: Ajv): void {
   });
 
   ajv.addKeyword({
+    keyword: "passwordPolicy",
+    type: "object",
+    errors: true,
+    validate: function passwordPolicy(
+      params: { field: string },
+      data: Record<string, unknown>,
+    ) {
+      const value = data[params.field];
+      if (typeof value !== "string") return true;
+      const ok =
+        value.length >= 10 &&
+        /[a-zA-Z]/.test(value) &&
+        /\d/.test(value);
+      if (!ok) {
+        // @ts-expect-error — Ajv attaches errors on the function
+        passwordPolicy.errors = [
+          {
+            keyword: "passwordPolicy",
+            message: "Password must be at least 10 characters with at least 1 letter and 1 digit",
+            params,
+          },
+        ];
+      }
+      return ok;
+    },
+  });
+
+  ajv.addKeyword({
     keyword: "dateOrder",
     type: "object",
     errors: true,
