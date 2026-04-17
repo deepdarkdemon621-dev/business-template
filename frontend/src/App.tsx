@@ -4,6 +4,7 @@ import { LoginPage } from "@/modules/auth/LoginPage";
 import { PasswordResetRequestPage } from "@/modules/auth/PasswordResetRequestPage";
 import { PasswordResetConfirmPage } from "@/modules/auth/PasswordResetConfirmPage";
 import { PasswordChangePage } from "@/modules/auth/PasswordChangePage";
+import { SessionsPage } from "@/modules/auth/SessionsPage";
 import { RequireAuth } from "@/modules/auth/components/RequireAuth";
 
 function DashboardPlaceholder() {
@@ -27,6 +28,14 @@ export default function App() {
             element={
               <RequireAuth>
                 <PasswordChangePage />
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="/me/sessions"
+            element={
+              <RequireAuth>
+                <SessionsPage />
               </RequireAuth>
             }
           />
