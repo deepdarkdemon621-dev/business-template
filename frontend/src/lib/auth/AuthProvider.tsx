@@ -6,7 +6,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { client } from "@/api/client";
+import { client, setRefreshTokenFn } from "@/api/client";
 import { clearToken, setToken } from "./storage";
 
 export interface AuthUser {
@@ -55,21 +55,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  // Wire the refresh function into the axios interceptor so the 401 handler
-  // can call it without a circular import.
+  // Wire the refresh function into the axios 401 interceptor.
   useEffect(() => {
-    // Imported lazily to avoid circular dependency at module init time.
-    import("@/api/client").then(({ setRefreshTokenFn }) => {
-      if (setRefreshTokenFn) {
-        setRefreshTokenFn(refreshToken);
-      }
-    });
+    setRefreshTokenFn(refreshToken);
     return () => {
-      import("@/api/client").then(({ setRefreshTokenFn }) => {
-        if (setRefreshTokenFn) {
-          setRefreshTokenFn(() => Promise.resolve(null));
-        }
-      });
+      setRefreshTokenFn(() => Promise.resolve(null));
     };
   }, [refreshToken]);
 
