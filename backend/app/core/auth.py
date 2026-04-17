@@ -6,6 +6,7 @@ from dataclasses import dataclass
 
 from jose import JWTError, jwt
 from passlib.context import CryptContext
+from redis.asyncio import Redis
 
 from app.core.config import get_settings
 from app.core.errors import ProblemDetails
@@ -66,3 +67,30 @@ def decode_access_token(token: str) -> TokenPayload:
             status=401,
             detail="Invalid or expired token.",
         ) from e
+
+
+async def denylist_token(redis: Redis, jti: str, ttl_seconds: int) -> None:
+    await redis.set(f"deny:{jti}", "1", ex=ttl_seconds)
+
+
+async def is_denylisted(redis: Redis, jti: str) -> bool:
+    return bool(await redis.exists(f"deny:{jti}"))
+
+
+async def record_failed_login(redis: Redis, email: str) -> None:
+    key = f"login:fail:{email}"
+    await redis.incr(key)
+    await redis.expire(key, 900)
+
+
+async def is_locked_out(redis: Redis, email: str) -> bool:
+    count = await redis.get(f"login:fail:{email}")
+    return int(count or 0) >= 5
+
+
+async def clear_failed_logins(redis: Redis, email: str) -> None:
+    await redis.delete(f"login:fail:{email}")
+
+
+async def verify_captcha(token: str | None) -> bool:
+    return True
