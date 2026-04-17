@@ -3,6 +3,7 @@ import {
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
@@ -46,6 +47,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       );
       setAccessToken(data.accessToken);
       setToken(data.accessToken);
+      // Refresh only rotates the token — hydrate the user profile so the
+      // app knows it's authenticated.
+      try {
+        const { data: profile } = await client.get<AuthUser>("/me/profile");
+        setUser(profile);
+      } catch {
+        // If profile fetch fails, fall through and let the 401 handling
+        // clear the session on the next protected request.
+      }
       return data.accessToken;
     } catch {
       setUser(null);
@@ -63,7 +73,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
   }, [refreshToken]);
 
+  // Refresh token rotation is destructive on the server — guard against
+  // StrictMode's double-mount firing the initial refresh twice.
+  const didInitRef = useRef(false);
   useEffect(() => {
+    if (didInitRef.current) return;
+    didInitRef.current = true;
     refreshToken().finally(() => setIsLoading(false));
   }, [refreshToken]);
 

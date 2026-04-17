@@ -46,10 +46,15 @@ client.interceptors.response.use(
     const originalRequest = err.config as RetryableConfig | undefined;
 
     // 401 handling: attempt token refresh then retry, or queue if already refreshing.
+    // Skip auth endpoints: /auth/refresh (recursive), /auth/login (bad creds, not expired token).
+    const isAuthEndpoint =
+      originalRequest?.url?.endsWith("/auth/refresh") ||
+      originalRequest?.url?.endsWith("/auth/login");
     if (
       err.response?.status === 401 &&
       originalRequest &&
       !originalRequest._retry &&
+      !isAuthEndpoint &&
       refreshTokenFn
     ) {
       originalRequest._retry = true;

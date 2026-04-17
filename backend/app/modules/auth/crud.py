@@ -6,6 +6,7 @@ from typing import Any
 
 from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from app.modules.auth.models import User, UserSession
 
@@ -37,7 +38,11 @@ async def create_session(
 
 
 async def get_session_by_id(session: AsyncSession, jti: uuid.UUID) -> UserSession | None:
-    result = await session.execute(select(UserSession).where(UserSession.id == jti))
+    result = await session.execute(
+        select(UserSession)
+        .where(UserSession.id == jti)
+        .options(selectinload(UserSession.user))
+    )
     return result.scalar_one_or_none()
 
 
