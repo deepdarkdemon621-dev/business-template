@@ -1,10 +1,32 @@
+import { BrowserRouter, Route, Routes } from "react-router-dom";
+import { AuthProvider } from "@/lib/auth";
+import { LoginPage } from "@/modules/auth/LoginPage";
+import { RequireAuth } from "@/modules/auth/components/RequireAuth";
+
+function DashboardPlaceholder() {
+  return (
+    <div className="flex min-h-screen items-center justify-center">
+      <h1 className="text-2xl font-bold">Dashboard (coming soon)</h1>
+    </div>
+  );
+}
+
 export default function App() {
   return (
-    <main className="min-h-screen flex items-center justify-center bg-background text-foreground">
-      <div className="text-center space-y-2">
-        <h1 className="text-2xl font-semibold">business-template</h1>
-        <p className="text-sm text-muted-foreground">foundation ready.</p>
-      </div>
-    </main>
+    <BrowserRouter>
+      <AuthProvider>
+        <Routes>
+          <Route path="/login" element={<LoginPage />} />
+          <Route
+            path="/"
+            element={
+              <RequireAuth>
+                <DashboardPlaceholder />
+              </RequireAuth>
+            }
+          />
+        </Routes>
+      </AuthProvider>
+    </BrowserRouter>
   );
 }
