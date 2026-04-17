@@ -1,9 +1,18 @@
 from __future__ import annotations
 
+import re
 from typing import Any, Protocol, runtime_checkable
 
 from sqlalchemy import func, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
+
+_IDENT_RE = re.compile(r"^[a-zA-Z_][a-zA-Z0-9_]*$")
+
+
+def _validate_ident(name: str) -> str:
+    if not _IDENT_RE.match(name):
+        raise ValueError(f"Invalid SQL identifier: {name!r}")
+    return name
 
 
 class GuardViolationError(Exception):
@@ -20,8 +29,8 @@ class Guard(Protocol):
 
 class NoDependents:
     def __init__(self, relation: str, fk_col: str) -> None:
-        self.relation = relation
-        self.fk_col = fk_col
+        self.relation = _validate_ident(relation)
+        self.fk_col = _validate_ident(fk_col)
 
     async def check(self, session: AsyncSession, instance: Any) -> None:
         stmt = (
