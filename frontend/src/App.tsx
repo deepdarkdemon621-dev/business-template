@@ -3,6 +3,7 @@ import { AuthProvider } from "@/lib/auth";
 import { LoginPage } from "@/modules/auth/LoginPage";
 import { PasswordResetRequestPage } from "@/modules/auth/PasswordResetRequestPage";
 import { PasswordResetConfirmPage } from "@/modules/auth/PasswordResetConfirmPage";
+import { PasswordChangePage } from "@/modules/auth/PasswordChangePage";
 import { RequireAuth } from "@/modules/auth/components/RequireAuth";
 
 function DashboardPlaceholder() {
@@ -21,6 +22,14 @@ export default function App() {
           <Route path="/login" element={<LoginPage />} />
           <Route path="/password-reset" element={<PasswordResetRequestPage />} />
           <Route path="/password-reset/confirm" element={<PasswordResetConfirmPage />} />
+          <Route
+            path="/password-change"
+            element={
+              <RequireAuth>
+                <PasswordChangePage />
+              </RequireAuth>
+            }
+          />
           <Route
             path="/"
             element={
