@@ -30,7 +30,7 @@ class Department(Base):
     }
 ```
 
-Service base class (Plan 2) runs `__guards__` for the matching operation before executing the mutation. On failure, raises `GuardViolationError(code="no_dependents", ctx={"table": "users", "count": 12})`.
+Service base class (Plan 2) runs `__guards__` for the matching operation before executing the mutation. On failure, raises `GuardViolationError(guard="NoDependents", ctx={"table": "users", "count": 12})`.
 
 ## FE deletability query
 
@@ -39,7 +39,7 @@ Every guarded resource exposes `GET /{resource}/{id}/deletable`:
 ```json
 {
   "can": false,
-  "reason_code": "no_dependents",
+  "reasonCode": "NoDependents",
   "details": { "table": "users", "count": 12 }
 }
 ```

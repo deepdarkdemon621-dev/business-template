@@ -1,4 +1,5 @@
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import type { FieldProps } from "./StringField";
 
 export function NumberField({ name, schema, register, error }: FieldProps) {
@@ -6,9 +7,7 @@ export function NumberField({ name, schema, register, error }: FieldProps) {
   const max = schema.maximum as number | undefined;
   return (
     <div className="flex flex-col gap-1">
-      <label htmlFor={name} className="text-sm font-medium">
-        {(schema.title as string) ?? name}
-      </label>
+      <Label htmlFor={name}>{(schema.title as string) ?? name}</Label>
       <Input
         id={name}
         type="number"

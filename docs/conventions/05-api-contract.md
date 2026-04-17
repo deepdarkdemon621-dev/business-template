@@ -10,9 +10,9 @@ All error responses:
   "title": "Guard violation",
   "status": 409,
   "detail": "Department has 12 users; cannot delete",
-  "code": "no_dependents",
+  "code": "dept.has-dependents",
   "errors": [],
-  "guard_violation": { "table": "users", "count": 12 }
+  "guardViolation": { "guard": "NoDependents", "params": { "table": "users", "count": 12 } }
 }
 ```
 

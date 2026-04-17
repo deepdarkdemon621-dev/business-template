@@ -1,4 +1,5 @@
 import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
 import type { FieldProps } from "./StringField";
 
 export function BooleanField({ name, schema, register, error }: FieldProps) {
@@ -13,9 +14,7 @@ export function BooleanField({ name, schema, register, error }: FieldProps) {
           onChange({ target: { name, value: checked } })
         }
       />
-      <label htmlFor={name} className="text-sm font-medium">
-        {(schema.title as string) ?? name}
-      </label>
+      <Label htmlFor={name}>{(schema.title as string) ?? name}</Label>
       {error && <span role="alert" className="text-sm text-red-600">{error}</span>}
     </div>
   );

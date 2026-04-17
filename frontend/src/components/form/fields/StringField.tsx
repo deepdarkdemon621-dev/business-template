@@ -1,5 +1,6 @@
 import type { UseFormRegister } from "react-hook-form";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
 export interface FieldProps {
   name: string;
@@ -12,9 +13,7 @@ export interface FieldProps {
 export function StringField({ name, schema, register, error }: FieldProps) {
   return (
     <div className="flex flex-col gap-1">
-      <label htmlFor={name} className="text-sm font-medium">
-        {(schema.title as string) ?? name}
-      </label>
+      <Label htmlFor={name}>{(schema.title as string) ?? name}</Label>
       <Input id={name} {...register(name)} />
       {error && (
         <span role="alert" className="text-sm text-red-600">

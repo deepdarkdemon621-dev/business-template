@@ -1,24 +1,34 @@
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import type { FieldProps } from "./StringField";
 
 export function EnumField({ name, schema, register, error }: FieldProps) {
   const values = (schema.enum as string[] | undefined) ?? [];
+  const { onChange, onBlur, ref } = register(name);
   return (
     <div className="flex flex-col gap-1">
-      <label htmlFor={name} className="text-sm font-medium">
-        {(schema.title as string) ?? name}
-      </label>
-      <select
-        id={name}
-        aria-label={(schema.title as string) ?? name}
-        {...register(name)}
-        className="h-9 rounded-md border border-input bg-background px-3 text-sm"
+      <Label htmlFor={name}>{(schema.title as string) ?? name}</Label>
+      <Select
+        name={name}
+        onValueChange={(v) => onChange({ target: { name, value: v } })}
       >
-        {values.map((v) => (
-          <option key={v} value={v}>
-            {v}
-          </option>
-        ))}
-      </select>
+        <SelectTrigger id={name} ref={ref} onBlur={onBlur}>
+          <SelectValue placeholder="Select..." />
+        </SelectTrigger>
+        <SelectContent>
+          {values.map((v) => (
+            <SelectItem key={v} value={v}>
+              {v}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
       {error && <span role="alert" className="text-sm text-red-600">{error}</span>}
     </div>
   );
