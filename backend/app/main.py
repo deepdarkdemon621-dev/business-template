@@ -2,6 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.config import get_settings
+from app.core.errors import install_handlers
 
 
 def create_app() -> FastAPI:
@@ -13,6 +14,8 @@ def create_app() -> FastAPI:
         redoc_url="/api/redoc" if settings.app_env != "prod" else None,
         openapi_url="/api/openapi.json" if settings.app_env != "prod" else None,
     )
+
+    install_handlers(app)
 
     app.add_middleware(
         CORSMiddleware,
