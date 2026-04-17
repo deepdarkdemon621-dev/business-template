@@ -3,6 +3,7 @@ and assert the composed behavior. Intentionally throwaway — Plan 3's first
 real endpoint supersedes it.
 """
 
+from contextlib import asynccontextmanager
 from typing import Annotated
 from unittest.mock import AsyncMock, MagicMock
 
@@ -38,6 +39,12 @@ def _make_app_and_session():
     install_handlers(app)
 
     session = AsyncMock()
+
+    @asynccontextmanager
+    async def _begin():
+        yield
+
+    session.begin = _begin
 
     async def get_session():
         return session

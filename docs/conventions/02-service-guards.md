@@ -30,7 +30,7 @@ class Department(Base):
     }
 ```
 
-Service base class (Plan 2) runs `__guards__` for the matching operation before executing the mutation. On failure, raises `GuardViolationError(guard="NoDependents", ctx={"table": "users", "count": 12})`.
+Service base class (Plan 2) runs `__guards__` for the matching operation before executing the mutation. On failure, raises `GuardViolationError(code="has-dependents", ctx={"relation": "users", "count": 12})`.
 
 ## FE deletability query
 

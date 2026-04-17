@@ -59,4 +59,5 @@ class ServiceBase:
         guards = getattr(self.model, "__guards__", {}).get("delete", [])
         for guard in guards:
             await guard.check(session, instance)
-        await session.delete(instance)
+        async with session.begin():
+            await session.delete(instance)

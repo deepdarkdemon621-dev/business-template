@@ -1,3 +1,4 @@
+from contextlib import asynccontextmanager
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock
 
@@ -13,7 +14,14 @@ from app.core.guards import (
 
 @pytest.fixture
 def session():
-    return AsyncMock()
+    s = AsyncMock()
+
+    @asynccontextmanager
+    async def _begin():
+        yield
+
+    s.begin = _begin
+    return s
 
 
 async def test_no_dependents_passes_when_count_zero(session):
