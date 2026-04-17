@@ -1,6 +1,8 @@
 import { BrowserRouter, Route, Routes } from "react-router-dom";
 import { AuthProvider } from "@/lib/auth";
 import { LoginPage } from "@/modules/auth/LoginPage";
+import { PasswordResetRequestPage } from "@/modules/auth/PasswordResetRequestPage";
+import { PasswordResetConfirmPage } from "@/modules/auth/PasswordResetConfirmPage";
 import { RequireAuth } from "@/modules/auth/components/RequireAuth";
 
 function DashboardPlaceholder() {
@@ -17,6 +19,8 @@ export default function App() {
       <AuthProvider>
         <Routes>
           <Route path="/login" element={<LoginPage />} />
+          <Route path="/password-reset" element={<PasswordResetRequestPage />} />
+          <Route path="/password-reset/confirm" element={<PasswordResetConfirmPage />} />
           <Route
             path="/"
             element={
