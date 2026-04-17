@@ -14,6 +14,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.auth import get_current_user
 from app.core.config import get_settings
 from app.core.database import get_session
+from app.core.permissions import public_endpoint
 from app.core.pagination import Page, PageQuery, paginate
 from app.core.redis import get_redis
 from app.modules.auth.models import UserSession
@@ -82,7 +83,7 @@ async def _current_user(
 # ---------------------------------------------------------------------------
 
 
-@router.post("/auth/login", response_model=LoginResponse)
+@router.post("/auth/login", response_model=LoginResponse, dependencies=[Depends(public_endpoint)])
 @limiter.limit("20/minute")
 async def login(
     request: Request,
@@ -118,7 +119,7 @@ async def login(
     )
 
 
-@router.post("/auth/refresh", response_model=TokenResponse)
+@router.post("/auth/refresh", response_model=TokenResponse, dependencies=[Depends(public_endpoint)])
 async def refresh(
     response: Response,
     session: AsyncSession = Depends(get_session),
@@ -245,7 +246,11 @@ async def revoke_session(
     await session.commit()
 
 
-@router.post("/auth/password-reset/request", status_code=status.HTTP_200_OK)
+@router.post(
+    "/auth/password-reset/request",
+    status_code=status.HTTP_200_OK,
+    dependencies=[Depends(public_endpoint)],
+)
 @limiter.limit("5/minute")
 async def request_password_reset(
     request: Request,
@@ -258,7 +263,11 @@ async def request_password_reset(
     return {"detail": "If that email exists, a reset link has been sent."}
 
 
-@router.post("/auth/password-reset/confirm", status_code=status.HTTP_204_NO_CONTENT)
+@router.post(
+    "/auth/password-reset/confirm",
+    status_code=status.HTTP_204_NO_CONTENT,
+    dependencies=[Depends(public_endpoint)],
+)
 async def confirm_password_reset(
     body: PasswordResetConfirmRequest,
     session: AsyncSession = Depends(get_session),

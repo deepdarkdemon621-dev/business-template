@@ -25,7 +25,12 @@ def get_route_path(dec: ast.Call) -> str | None:
 
 
 def is_list_path(path: str) -> bool:
-    return "{" not in path
+    if "{" in path:
+        return False
+    segments = [s for s in path.strip("/").split("/") if s]
+    if segments and segments[0] == "me" and len(segments) <= 2:
+        return len(segments) == 2 and segments[1] != "profile"
+    return True
 
 
 def audit_file(path: Path) -> list[str]:

@@ -29,16 +29,32 @@ def is_route_decorator(dec: ast.expr) -> tuple[bool, ast.Call | None]:
     return False, None
 
 
-def has_permission_dep(call: ast.Call) -> bool:
+AUTH_DEP_MARKERS = {
+    "require_perm", "require_auth", "load_in_scope",
+    "get_current_user", "_current_user", "public_endpoint",
+}
+
+
+def has_permission_dep(call: ast.Call, func_node: ast.AsyncFunctionDef | ast.FunctionDef) -> bool:
     for kw in call.keywords:
         if kw.arg == "dependencies":
             if isinstance(kw.value, ast.List):
                 for el in kw.value.elts:
                     src = ast.unparse(el)
-                    if "require_perm" in src or "require_auth" in src or "load_in_scope" in src:
+                    if any(m in src for m in AUTH_DEP_MARKERS):
                         return True
         if kw.arg == "public":
             if isinstance(kw.value, ast.Constant) and kw.value.value is True:
+                return True
+    for arg in func_node.args.args + func_node.args.kwonlyargs:
+        if arg.annotation:
+            src = ast.unparse(arg.annotation)
+            if any(m in src for m in AUTH_DEP_MARKERS):
+                return True
+    for default in func_node.args.defaults + func_node.args.kw_defaults:
+        if default is not None:
+            src = ast.unparse(default)
+            if any(m in src for m in AUTH_DEP_MARKERS):
                 return True
     return False
 
@@ -51,7 +67,7 @@ def audit_file(path: Path) -> list[str]:
             for dec in node.decorator_list:
                 is_route, call = is_route_decorator(dec)
                 if is_route and call is not None:
-                    if not has_permission_dep(call):
+                    if not has_permission_dep(call, node):
                         violations.append(
                             f"{path.relative_to(ROOT)}:{node.lineno} "
                             f"endpoint `{node.name}` missing require_perm/public=True"
