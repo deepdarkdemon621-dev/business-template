@@ -72,3 +72,42 @@ The same declaration drives an auto-generated `@model_validator` on the BE side 
 - `scripts/audit/audit_json_schema.sh` — fails if any `*.schema.json` appears under `backend/` or `frontend/src/` (excluding `frontend/src/api/generated/`)
 - `scripts/audit/audit_listing.py` — reviews endpoint signatures for missing Pydantic response_model
 - CI step: run `pytest` against `tests/contracts/` (to be added in Plan 2) that round-trips Pydantic → JSON Schema → ajv-validates known samples
+
+## Concrete primitives (shipped in Plan 2)
+
+### `BaseSchema`
+
+```python
+from app.core.schemas import BaseSchema
+
+class UserRead(BaseSchema):
+    id: int
+    email: str
+    created_at: datetime
+```
+
+- camelCase at the boundary (`createdAt`).
+- Accepts both `snake_case` and `camelCase` on input.
+- Reads from SQLAlchemy instances.
+- `datetime` with UTC offset is normalized to `Z`.
+
+### Cross-field rules via `__rules__`
+
+```python
+from app.core.form_rules import must_match, date_order
+from app.core.schemas import BaseSchema
+
+class PasswordReset(BaseSchema):
+    new_password: str
+    confirm: str
+    __rules__ = [must_match(a="new_password", b="confirm")]
+
+class DateRange(BaseSchema):
+    starts_on: date
+    ends_on: date
+    __rules__ = [date_order(start="starts_on", end="ends_on")]
+```
+
+The `__rules__` attribute is consumed by `BaseSchema.__init_subclass__`: each entry emits `x-rules` in `model_json_schema()` (for the frontend Ajv) and attaches a `@model_validator` (for the backend). Only names registered in `FormRuleRegistry` may be used.
+
+Adding a new rule? Add it to `backend/app/core/form_rules.py` AND to `frontend/src/lib/form-rules.ts` in the same PR.

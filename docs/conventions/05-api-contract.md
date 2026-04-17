@@ -77,3 +77,71 @@ All routes prefixed `/api/v1/...`. Breaking changes → `v2` parallel routes.
 - `scripts/audit/audit_listing.py` — AST-scans list endpoints; fails if return type is not `Page[X]` (Plan 2 adds `Page` generic)
 - `scripts/audit/audit_error_shape.py` (Plan 2) — every `raise HTTPException` must carry a `code`; bare raises fail
 - CI: OpenAPI → TS codegen must produce no conflicts with existing `src/api/generated/` before merge
+
+## Concrete endpoint shapes (shipped in Plan 2)
+
+### List endpoints return `Page[T]`
+
+```python
+from typing import Annotated
+from fastapi import APIRouter, Depends
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+from app.core.pagination import Page, PageQuery, paginate
+
+router = APIRouter()
+
+@router.get("/users", response_model=Page[UserRead])
+async def list_users(
+    session: Annotated[AsyncSession, Depends(get_session)],
+    pq: Annotated[PageQuery, Depends()],
+) -> Page[UserRead]:
+    stmt = select(User).order_by(User.id)
+    return await paginate(session, stmt, pq)
+```
+
+Wire-format response:
+
+```json
+{
+  "items": [...],
+  "total": 42,
+  "page": 1,
+  "size": 20,
+  "hasNext": true
+}
+```
+
+`size > 100` is silently clamped — never 400.
+
+### Errors always go through Problem Details
+
+```python
+from app.core.errors import ProblemDetails, FieldError
+
+raise ProblemDetails(
+    code="user.not-found",
+    status=404,
+    detail="User not found.",
+)
+
+raise ProblemDetails(
+    code="user.invalid-email",
+    status=422,
+    detail="Validation failed.",
+    errors=[FieldError(field="email", code="format", message="bad email")],
+)
+```
+
+Content-type is `application/problem+json`. Never raise bare `HTTPException`.
+
+### Frontend HTTP
+
+```ts
+import { client } from "@/api/client";
+import type { Page } from "@/lib/pagination";
+
+const { data } = await client.get<Page<UserRead>>("/users", { params: { page: 1, size: 20 } });
+```
+
+Only `api/client.ts` may call Axios directly. Never `fetch()`, never a second Axios instance.

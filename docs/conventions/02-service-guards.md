@@ -62,3 +62,45 @@ FE uses this to disable destructive buttons with an explanatory tooltip, not let
 
 - `scripts/audit/audit_guards.py` (added in Plan 2) — AST scan: every model with `delete` route must have `__guards__` declared OR be explicitly tagged `__no_guards__ = True` with a comment justification
 - CI test: every `GuardViolationError.code` must appear in the registry keys set
+
+## Concrete guards (shipped in Plan 2)
+
+### Declarative attachment
+
+```python
+from app.core.guards import NoDependents
+
+class Department(Base):
+    __tablename__ = "departments"
+    id: Mapped[int] = mapped_column(primary_key=True)
+
+    __guards__ = {
+        "delete": [
+            NoDependents("users", "department_id"),
+            NoDependents("roles", "default_department_id"),
+        ],
+    }
+```
+
+### Service layer
+
+```python
+from app.core.guards import GuardViolationError, ServiceBase
+from app.core.errors import ProblemDetails, GuardViolationCtx
+
+class DepartmentService(ServiceBase):
+    model = Department
+
+    async def delete_safe(self, session, instance):
+        try:
+            await self.delete(session, instance)
+        except GuardViolationError as e:
+            raise ProblemDetails(
+                code="department.has-dependents",
+                status=409,
+                detail="Cannot delete a department with dependents.",
+                guard_violation=GuardViolationCtx(guard="NoDependents", params=e.ctx),
+            )
+```
+
+DB-level `ON DELETE RESTRICT` is the belt; guards are the braces. Keep both.
