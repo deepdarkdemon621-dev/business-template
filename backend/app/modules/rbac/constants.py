@@ -42,3 +42,7 @@ def widest(a: ScopeEnum, b: ScopeEnum) -> ScopeEnum:
 
 # Sentinel returned by get_user_permissions for superadmins — callers short-circuit.
 SUPERADMIN_ALL = object()
+
+# Canonical code of the seeded superadmin role. Guards and lookups reference this
+# rather than embedding the literal string.
+SUPERADMIN_ROLE_CODE = "superadmin"

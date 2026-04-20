@@ -80,14 +80,11 @@ class SelfProtection:
     ) -> None:
         if actor is None:
             return
-        # `is_superadmin` reads the async-mapped `roles` relationship; hydrate it
-        # first so a freshly-flushed (not-yet-queried) actor doesn't trigger a
-        # sync lazy-load inside this async context.
-        awaitable_attrs = getattr(actor, "awaitable_attrs", None)
-        roles_awaitable = getattr(awaitable_attrs, "roles", None)
-        if roles_awaitable is not None:
-            await roles_awaitable
-        if getattr(actor, "is_superadmin", False):
+        # `is_superadmin` reads the selectin-loaded `roles` relationship; a
+        # freshly-flushed (not-yet-queried) actor has no cache, so hydrate via
+        # AsyncAttrs before touching the sync property.
+        await actor.awaitable_attrs.roles
+        if actor.is_superadmin:
             return
         if getattr(actor, "id", None) == getattr(instance, "id", None):
             raise GuardViolationError(

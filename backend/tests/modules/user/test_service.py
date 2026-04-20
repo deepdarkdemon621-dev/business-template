@@ -2,11 +2,14 @@ from __future__ import annotations
 
 import pytest
 import pytest_asyncio
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.auth import hash_password, verify_password
+from app.core.errors import ProblemDetails
 from app.core.guards import GuardViolationError
 from app.modules.auth.models import User
+from app.modules.rbac.constants import SUPERADMIN_ROLE_CODE
 from app.modules.rbac.models import Role, UserRole
 from app.modules.user.schemas import UserCreateIn, UserUpdateIn
 from app.modules.user.service import (
@@ -30,10 +33,10 @@ async def actor(db_session: AsyncSession) -> User:
 
 @pytest_asyncio.fixture
 async def superadmin_actor(db_session: AsyncSession) -> User:
-    from sqlalchemy import select
-
     role = (
-        await db_session.execute(select(Role).where(Role.code == "superadmin"))
+        await db_session.execute(
+            select(Role).where(Role.code == SUPERADMIN_ROLE_CODE)
+        )
     ).scalar_one()
     u = User(email="sa@ex.com", password_hash=hash_password("pw-aaa111"), full_name="SA")
     db_session.add(u)
@@ -103,9 +106,6 @@ async def test_assign_role_is_idempotent(db_session: AsyncSession, actor: User) 
 
     await assign_role(db_session, target, role, actor=actor)
     await assign_role(db_session, target, role, actor=actor)  # no error
-    # verify only one row
-    from sqlalchemy import select, func
-
     count = (
         await db_session.execute(
             select(func.count()).select_from(UserRole).where(UserRole.user_id == target.id)
@@ -123,8 +123,6 @@ async def test_revoke_role_removes_row(db_session: AsyncSession, actor: User) ->
     await db_session.flush()
 
     await revoke_role(db_session, target, role, actor=actor)
-    from sqlalchemy import select, func
-
     count = (
         await db_session.execute(
             select(func.count()).select_from(UserRole).where(UserRole.user_id == target.id)
@@ -140,8 +138,6 @@ async def test_revoke_role_raises_when_not_assigned(
     role = Role(code="rrr", name="RRR")
     db_session.add_all([target, role])
     await db_session.flush()
-
-    from app.core.errors import ProblemDetails
 
     with pytest.raises(ProblemDetails) as ei:
         await revoke_role(db_session, target, role, actor=actor)

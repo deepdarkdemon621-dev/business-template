@@ -9,7 +9,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.database import Base
 from app.core.guards import SelfProtection
-from app.modules.rbac.constants import ScopeEnum
+from app.modules.rbac.constants import SUPERADMIN_ROLE_CODE, ScopeEnum
 from app.modules.rbac.guards import LastOfKind
 
 
@@ -66,7 +66,7 @@ class User(Base):
     __guards__ = {
         "delete": [SelfProtection()],
         "deactivate": [SelfProtection()],
-        "strip_role": [SelfProtection(), LastOfKind("superadmin")],
+        "strip_role": [SelfProtection(), LastOfKind(SUPERADMIN_ROLE_CODE)],
     }
 
 
