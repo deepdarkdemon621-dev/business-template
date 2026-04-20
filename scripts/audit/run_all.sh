@@ -30,6 +30,8 @@ run "handwritten-form" bash scripts/audit/audit_handwritten_form.sh
 if command -v python >/dev/null 2>&1; then
     run "permissions"   python scripts/audit/audit_permissions.py
     run "listing"       python scripts/audit/audit_listing.py
+    run "scope"         python scripts/audit/audit_scope.py
+    run "schema-db"     python scripts/audit/audit_schema_db_consistency.py
 fi
 
 echo
