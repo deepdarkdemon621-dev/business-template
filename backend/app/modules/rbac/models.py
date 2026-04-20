@@ -98,3 +98,26 @@ class Role(Base):
         server_default=func.now(),
         onupdate=func.now(),
     )
+
+
+class RolePermission(Base):
+    __tablename__ = "role_permissions"
+
+    role_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("roles.id", ondelete="CASCADE"),
+        primary_key=True,
+    )
+    permission_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("permissions.id", ondelete="CASCADE"),
+        primary_key=True,
+    )
+    scope: Mapped[str] = mapped_column(String(20), nullable=False)
+
+    __table_args__ = (
+        CheckConstraint(
+            "scope IN ('global','dept_tree','dept','own')",
+            name="ck_role_permissions_scope",
+        ),
+    )
