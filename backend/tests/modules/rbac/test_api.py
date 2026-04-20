@@ -116,9 +116,13 @@ async def test_departments_superadmin_lists_all(client_with_db: AsyncClient, sup
         headers={"Authorization": f"Bearer {token}"},
     )
     assert resp.status_code == 200, resp.text
-    items = resp.json()
-    # Migration seeds at least one root (depth=0) department.
+    body = resp.json()
+    # Paginated envelope: {items, total, page, size, hasNext}
+    assert set(body.keys()) >= {"items", "total", "page", "size", "hasNext"}
+    items = body["items"]
     assert isinstance(items, list)
+    # Migration seeds at least one root (depth=0) department.
+    assert body["total"] >= 1
     assert len(items) >= 1
     assert any(d["depth"] == 0 for d in items)
 
@@ -188,7 +192,9 @@ async def test_departments_member_dept_tree_filter(
         headers={"Authorization": f"Bearer {token}"},
     )
     assert resp.status_code == 200, resp.text
-    items = resp.json()
+    body = resp.json()
+    assert set(body.keys()) >= {"items", "total", "page", "size", "hasNext"}
+    items = body["items"]
     ids = {d["id"] for d in items}
     assert str(root.id) in ids
     assert str(child.id) in ids

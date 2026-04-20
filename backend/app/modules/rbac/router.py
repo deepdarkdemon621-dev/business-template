@@ -1,10 +1,13 @@
 from __future__ import annotations
 
+from typing import Annotated
+
 from fastapi import APIRouter, Depends
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_session
+from app.core.pagination import Page, PageQuery, paginate
 from app.core.permissions import (
     SUPERADMIN_ALL,
     apply_scope,
@@ -36,15 +39,23 @@ async def get_my_permissions(
 
 @router.get(
     "/departments",
-    response_model=list[DepartmentOut],
+    response_model=Page[DepartmentOut],
     dependencies=[Depends(require_perm("department:list"))],
 )
 async def list_departments_endpoint(
+    pq: Annotated[PageQuery, Depends()],
     user: User = Depends(current_user_dep),
     db: AsyncSession = Depends(get_session),
-) -> list[DepartmentOut]:
+) -> Page[DepartmentOut]:
     perms = await get_user_permissions(db, user)
     stmt = select(Department).order_by(Department.depth, Department.name)
     stmt = apply_scope(stmt, user, "department:list", Department, perms)
-    result = await db.execute(stmt)
-    return [DepartmentOut.model_validate(i, from_attributes=True) for i in result.scalars().all()]
+    raw_page = await paginate(db, stmt, pq)
+    items = [DepartmentOut.model_validate(i, from_attributes=True) for i in raw_page.items]
+    return Page[DepartmentOut](
+        items=items,
+        total=raw_page.total,
+        page=raw_page.page,
+        size=raw_page.size,
+        has_next=raw_page.has_next,
+    )
