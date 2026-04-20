@@ -24,3 +24,13 @@ async def test_permission_code_unique(db_session: AsyncSession):
     db_session.add(p)
     await db_session.flush()
     assert p.id is not None
+
+
+@pytest.mark.asyncio
+async def test_role_is_superadmin_defaults_false(db_session: AsyncSession):
+    from app.modules.rbac.models import Role
+    r = Role(code="custom", name="Custom", is_builtin=False)
+    db_session.add(r)
+    await db_session.flush()
+    assert r.is_superadmin is False
+    assert r.is_builtin is False
