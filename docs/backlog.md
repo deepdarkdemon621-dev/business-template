@@ -11,6 +11,33 @@ Tracks "do later / V-next" features and improvements for this project. Whenever 
 
 ---
 
+## 2026-04-20 — `last_login_at` field on User (operational visibility)
+
+- **Source**: Plan 5 design discussion (D3); scoped out of prototype
+- **Context**: User list page lacks "last login" visibility. Useful for spotting dormant accounts and stale permissions.
+- **What's needed**:
+  - Alembic migration: add `users.last_login_at TIMESTAMPTZ NULL` + index
+  - `modules/auth/service.py`: on successful token issuance, `UPDATE users SET last_login_at = now()`
+  - `UserOut` schema + list page column + sort support
+- **Work estimate**: ~15 LOC + 1 migration + 1 test. Trivial.
+- **Dependencies**: none. Best bundled with Role-CRUD or Audit-log plan so we only touch the user list page once more.
+
+---
+
+## 2026-04-20 — Plan 5 admin-CRUD scope extensions (deferred from prototype)
+
+- **Source**: Plan 5 design discussion; user chose minimal prototype scope
+- **Context**: Plan 5 ships a working prototype (User CRUD + Role assignment + DataTable + AppShell primitives). These extensions were scoped out to keep the first admin UI shippable, but must follow once the prototype validates the stack end-to-end.
+- **What's needed** (each can be its own small plan):
+  - **Department tree CRUD UI** — create/rename/move/delete nodes, parent picker, materialized-path integrity; FE tree component + backend `move_department` from existing backlog entry
+  - **Role CRUD + RolePermission editor** — create/edit roles, grant/revoke permissions with scope picker (global / dept_tree / dept / own); permission matrix UI
+  - **Audit log viewer** — filterable list of mutation events (who / when / what resource / before-after diff), per-resource drill-down
+  - **Session management admin view** — view all active sessions across users, revoke remotely (extends existing `/me/sessions` to admin-scoped endpoint)
+- **Work estimate**: each ~0.5–1 plan's worth. Best sequenced: Role editor → Department tree → Audit viewer → Session admin.
+- **Dependencies**: Plan 5 prototype complete (DataTable + AppShell primitives available). Department tree needs `move_department` backend op (itself already backlogged).
+
+---
+
 ## 2026-04-17 — LoginPage missing required-field markers (5-layer form consistency debt)
 
 - **Source**: Plan 3 retro; deferred during test phase
