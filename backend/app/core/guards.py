@@ -81,10 +81,13 @@ class SelfProtection:
         if actor is None:
             return
         # `is_superadmin` reads the selectin-loaded `roles` relationship; a
-        # freshly-flushed (not-yet-queried) actor has no cache, so hydrate via
-        # AsyncAttrs before touching the sync property.
-        await actor.awaitable_attrs.roles
-        if actor.is_superadmin:
+        # freshly-flushed (not-yet-queried) SA actor has no cache, so hydrate
+        # via AsyncAttrs before touching the sync property. Non-SA mock actors
+        # (unit tests) have no `awaitable_attrs` — fall through to the property.
+        awaitable_attrs = getattr(actor, "awaitable_attrs", None)
+        if awaitable_attrs is not None:
+            await awaitable_attrs.roles
+        if getattr(actor, "is_superadmin", False):
             return
         if getattr(actor, "id", None) == getattr(instance, "id", None):
             raise GuardViolationError(
