@@ -18,14 +18,13 @@ from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.database import Base
+from app.modules.rbac.constants import ScopeEnum
 
 
 class Department(Base):
     __tablename__ = "departments"
 
-    id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
-    )
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     parent_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True), ForeignKey("departments.id"), nullable=True
     )
@@ -51,13 +50,20 @@ class Department(Base):
         Index("ix_departments_parent_id", "parent_id"),
     )
 
+    # Scope map: for Department itself, scope narrows via the department's own
+    # `id` field. `apply_scope` special-cases DEPT_TREE to filter by subtree
+    # (rows whose `id` IN subtree-of-user-dept).
+    __scope_map__ = {
+        ScopeEnum.DEPT_TREE: "id",
+        ScopeEnum.DEPT: "id",
+        ScopeEnum.OWN: "id",
+    }
+
 
 class Permission(Base):
     __tablename__ = "permissions"
 
-    id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
-    )
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     code: Mapped[str] = mapped_column(String(100), nullable=False, unique=True)
     resource: Mapped[str] = mapped_column(String(50), nullable=False)
     action: Mapped[str] = mapped_column(String(20), nullable=False)
@@ -78,9 +84,7 @@ class Permission(Base):
 class Role(Base):
     __tablename__ = "roles"
 
-    id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
-    )
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     code: Mapped[str] = mapped_column(String(50), nullable=False, unique=True)
     name: Mapped[str] = mapped_column(String(100), nullable=False)
     is_builtin: Mapped[bool] = mapped_column(
