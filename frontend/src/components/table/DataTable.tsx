@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import type { Page, PageQuery } from "@/lib/pagination";
 import { Button } from "@/components/ui/button";
 
@@ -20,6 +20,10 @@ export type DataTableProps<T> = {
 
 type Status = "idle" | "loading" | "error" | "ready";
 
+/**
+ * Server-paginated table. Pass a new `queryKey` tuple to trigger a refetch
+ * (e.g. after a mutation).
+ */
 export function DataTable<T extends { id: string }>({
   columns,
   fetcher,
@@ -32,23 +36,26 @@ export function DataTable<T extends { id: string }>({
   const [size] = useState(initialSize);
   const [data, setData] = useState<Page<T> | null>(null);
   const [status, setStatus] = useState<Status>("idle");
-
-  const load = useCallback(async () => {
-    setStatus("loading");
-    try {
-      const result = await fetcher({ page, size });
-      setData(result);
-      setStatus("ready");
-    } catch {
-      setStatus("error");
-    }
-  }, [fetcher, page, size]);
+  const [reloadToken, setReloadToken] = useState(0);
 
   useEffect(() => {
-    void load();
-    // queryKey invalidation: if the key tuple changes, caller re-renders with a new key,
-    // remounting the component — so we don't need to track queryKey as a dep.
-  }, [page, size, ...queryKey]);
+    let active = true;
+    (async () => {
+      setStatus("loading");
+      try {
+        const result = await fetcher({ page, size });
+        if (!active) return;
+        setData(result);
+        setStatus("ready");
+      } catch {
+        if (active) setStatus("error");
+      }
+    })();
+    return () => {
+      active = false;
+    };
+    // queryKey is intentionally spread so caller can trigger re-fetch by passing a new tuple.
+  }, [fetcher, page, size, reloadToken, ...queryKey]);
 
   if (status === "loading" && !data) {
     return (
@@ -61,7 +68,7 @@ export function DataTable<T extends { id: string }>({
     return (
       <div className="py-8 text-center text-destructive">
         Failed to load.{" "}
-        <Button variant="ghost" size="sm" onClick={() => void load()}>
+        <Button variant="ghost" size="sm" onClick={() => setReloadToken((t) => t + 1)}>
           Retry
         </Button>
       </div>
@@ -78,11 +85,11 @@ export function DataTable<T extends { id: string }>({
           <thead className="bg-muted/50">
             <tr>
               {columns.map((c) => (
-                <th key={c.key} className="px-3 py-2 text-left font-medium">
+                <th key={c.key} scope="col" className="px-3 py-2 text-left font-medium">
                   {c.header}
                 </th>
               ))}
-              {rowActions ? <th className="px-3 py-2" /> : null}
+              {rowActions ? <th scope="col" className="px-3 py-2" /> : null}
             </tr>
           </thead>
           <tbody>
