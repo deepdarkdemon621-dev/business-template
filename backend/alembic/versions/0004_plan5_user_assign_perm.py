@@ -37,7 +37,20 @@ def upgrade() -> None:
             description="Assign roles to a user",
         )
     )
+    # Grant user:assign to the admin built-in role so a fresh upgrade head
+    # leaves admin with the same permissions as superadmin (minus bypass).
+    op.execute("""
+        INSERT INTO role_permissions (role_id, permission_id, scope)
+        SELECT r.id, p.id, 'global'
+        FROM roles r, permissions p
+        WHERE r.code = 'admin' AND p.code = 'user:assign'
+    """)
 
 
 def downgrade() -> None:
+    # Delete FK-dependent row before the permission row itself.
+    op.execute(
+        "DELETE FROM role_permissions WHERE permission_id IN "
+        "(SELECT id FROM permissions WHERE code = 'user:assign')"
+    )
     op.execute("DELETE FROM permissions WHERE code = 'user:assign'")

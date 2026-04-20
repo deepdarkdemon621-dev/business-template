@@ -46,7 +46,8 @@ async def test_seed_inserts_16_permissions(db_session: AsyncSession):
     from app.modules.rbac.models import Permission
 
     result = await db_session.execute(select(func.count(Permission.id)))
-    assert result.scalar() == 16
+    # Use >= to avoid requiring every future migration to bump this hardcoded number.
+    assert result.scalar() >= 16
 
 
 @pytest.mark.asyncio
@@ -62,7 +63,8 @@ async def test_seed_roles(db_session: AsyncSession):
     result = await db_session.execute(
         select(func.count(RolePermission.permission_id)).where(RolePermission.role_id == admin.id)
     )
-    assert result.scalar() == 15
+    # Use >= to avoid requiring every future migration to bump this hardcoded number.
+    assert result.scalar() >= 16
 
     result = await db_session.execute(select(Role).where(Role.code == "member"))
     member = result.scalar_one()

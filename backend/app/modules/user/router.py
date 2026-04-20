@@ -85,6 +85,17 @@ async def get_user(
     )
 
 
+async def _resolve_role_target(
+    db: AsyncSession, user_id: uuid.UUID, role_id: uuid.UUID, actor: User
+) -> tuple[User, Role]:
+    perms = await get_user_permissions(db, actor)
+    target = await load_in_scope(db, User, user_id, actor, "user:assign", perms)
+    role = await db.get(Role, role_id)
+    if role is None:
+        raise ProblemDetails(code="role-not-found", status=404, detail="Role not found.")
+    return target, role
+
+
 def _guard_to_problem(e: GuardViolationError) -> ProblemDetails:
     return ProblemDetails(
         code=e.code,
@@ -164,11 +175,7 @@ async def assign_role_endpoint(
     user: User = Depends(current_user_dep),
     db: AsyncSession = Depends(get_session),
 ) -> Response:
-    perms = await get_user_permissions(db, user)
-    target = await load_in_scope(db, User, user_id, user, "user:assign", perms)
-    role = await db.get(Role, role_id)
-    if role is None:
-        raise ProblemDetails(code="role-not-found", status=404, detail="Role not found.")
+    target, role = await _resolve_role_target(db, user_id, role_id, user)
     try:
         await assign_role(db, target, role, actor=user)
     except GuardViolationError as e:
@@ -188,11 +195,7 @@ async def revoke_role_endpoint(
     user: User = Depends(current_user_dep),
     db: AsyncSession = Depends(get_session),
 ) -> Response:
-    perms = await get_user_permissions(db, user)
-    target = await load_in_scope(db, User, user_id, user, "user:assign", perms)
-    role = await db.get(Role, role_id)
-    if role is None:
-        raise ProblemDetails(code="role-not-found", status=404, detail="Role not found.")
+    target, role = await _resolve_role_target(db, user_id, role_id, user)
     try:
         await revoke_role(db, target, role, actor=user)
     except GuardViolationError as e:

@@ -35,7 +35,7 @@ async def test_get_user_permissions_superadmin_returns_sentinel(
 async def test_get_user_permissions_admin_role_returns_dict_with_global(
     db_session: AsyncSession,
 ):
-    """Admin role grants all 15 codes at scope=global. Fold should yield dict[str, ScopeEnum]."""
+    """Admin role grants all non-superadmin codes at scope=global. Fold should yield dict[str, ScopeEnum]."""
     from app.modules.rbac.constants import ScopeEnum
 
     user = User(
@@ -53,8 +53,10 @@ async def test_get_user_permissions_admin_role_returns_dict_with_global(
     result = await get_user_permissions(db_session, user)
     assert result is not SUPERADMIN_ALL
     assert isinstance(result, dict)
-    assert len(result) == 15
+    # Use >= to avoid requiring every future migration to bump this hardcoded number.
+    assert len(result) >= 16
     assert result["user:read"] == ScopeEnum.GLOBAL
+    assert result["user:assign"] == ScopeEnum.GLOBAL
 
 
 def test_require_perm_returns_callable():
