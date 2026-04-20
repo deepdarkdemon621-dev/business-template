@@ -15,3 +15,12 @@ async def test_department_insert_and_path(db_session: AsyncSession):
     assert fetched.name == "Root"
     assert fetched.depth == 0
     assert fetched.is_active is True
+
+
+@pytest.mark.asyncio
+async def test_permission_code_unique(db_session: AsyncSession):
+    from app.modules.rbac.models import Permission
+    p = Permission(code="user:read", resource="user", action="read", description="Read a user")
+    db_session.add(p)
+    await db_session.flush()
+    assert p.id is not None

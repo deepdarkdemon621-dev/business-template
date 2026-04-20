@@ -50,3 +50,26 @@ class Department(Base):
         Index("ix_departments_path", "path"),
         Index("ix_departments_parent_id", "parent_id"),
     )
+
+
+class Permission(Base):
+    __tablename__ = "permissions"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    code: Mapped[str] = mapped_column(String(100), nullable=False, unique=True)
+    resource: Mapped[str] = mapped_column(String(50), nullable=False)
+    action: Mapped[str] = mapped_column(String(20), nullable=False)
+    description: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+
+    __table_args__ = (
+        CheckConstraint(
+            "action IN ('create','read','update','delete','list','export','approve','reject','publish','invoke')",
+            name="ck_permissions_action",
+        ),
+        Index("ix_permissions_resource_action", "resource", "action"),
+    )
