@@ -24,7 +24,9 @@ class GuardViolationError(Exception):
 
 @runtime_checkable
 class Guard(Protocol):
-    async def check(self, session: AsyncSession, instance: Any) -> None: ...
+    async def check(
+        self, session: AsyncSession, instance: Any, *, actor: Any | None = None
+    ) -> None: ...
 
 
 class NoDependents:
@@ -32,7 +34,9 @@ class NoDependents:
         self.relation = _validate_ident(relation)
         self.fk_col = _validate_ident(fk_col)
 
-    async def check(self, session: AsyncSession, instance: Any) -> None:
+    async def check(
+        self, session: AsyncSession, instance: Any, *, actor: Any | None = None
+    ) -> None:
         stmt = (
             select(func.count())
             .select_from(text(self.relation))
@@ -52,7 +56,9 @@ class StateAllows:
         self.field = field
         self.allowed = list(allowed)
 
-    async def check(self, session: AsyncSession, instance: Any) -> None:
+    async def check(
+        self, session: AsyncSession, instance: Any, *, actor: Any | None = None
+    ) -> None:
         actual = getattr(instance, self.field)
         if actual not in self.allowed:
             raise GuardViolationError(
@@ -61,12 +67,31 @@ class StateAllows:
             )
 
 
+class SelfProtection:
+    """Forbid an action where the actor is the target. Bypassed for superadmins."""
+
+    async def check(
+        self, session: AsyncSession, instance: Any, *, actor: Any | None = None
+    ) -> None:
+        if actor is None:
+            return
+        if getattr(actor, "is_superadmin", False):
+            return
+        if getattr(actor, "id", None) == getattr(instance, "id", None):
+            raise GuardViolationError(
+                code="self-protection",
+                ctx={"actor_id": str(actor.id), "target_id": str(instance.id)},
+            )
+
+
 class ServiceBase:
     model: type
 
-    async def delete(self, session: AsyncSession, instance: Any) -> None:
+    async def delete(
+        self, session: AsyncSession, instance: Any, *, actor: Any | None = None
+    ) -> None:
         guards = getattr(self.model, "__guards__", {}).get("delete", [])
         for guard in guards:
-            await guard.check(session, instance)
+            await guard.check(session, instance, actor=actor)
         async with session.begin():
             await session.delete(instance)

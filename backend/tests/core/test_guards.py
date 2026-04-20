@@ -62,7 +62,7 @@ async def test_service_base_runs_delete_guards(session):
     calls: list[str] = []
 
     class _Guard:
-        async def check(self, s, i):
+        async def check(self, s, i, *, actor=None):
             calls.append("checked")
 
     class _Model:
@@ -81,7 +81,7 @@ async def test_service_base_runs_delete_guards(session):
 
 async def test_service_base_aborts_on_guard_failure(session):
     class _Guard:
-        async def check(self, s, i):
+        async def check(self, s, i, *, actor=None):
             raise GuardViolationError(code="has-dependents", ctx={"relation": "x"})
 
     class _Model:
