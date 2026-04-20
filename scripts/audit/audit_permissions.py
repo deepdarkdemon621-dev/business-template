@@ -32,6 +32,7 @@ def is_route_decorator(dec: ast.expr) -> tuple[bool, ast.Call | None]:
 AUTH_DEP_MARKERS = {
     "require_perm", "require_auth", "load_in_scope",
     "get_current_user", "_current_user", "public_endpoint",
+    "current_user_dep",
 }
 
 
