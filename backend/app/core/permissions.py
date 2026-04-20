@@ -1,6 +1,8 @@
 from __future__ import annotations
 
-from fastapi import Depends, HTTPException, Request, status
+from typing import Annotated
+
+from fastapi import Depends, Header, HTTPException, Request, status
 from sqlalchemy import Select, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -14,12 +16,27 @@ __all__ = [
     "PermissionMap",
     "SUPERADMIN_ALL",
     "public_endpoint",
+    "current_user_dep",
     "get_user_permissions",
     "load_permissions",
     "require_perm",
     "apply_scope",
     "load_in_scope",
 ]
+
+
+async def current_user_dep(
+    authorization: Annotated[str, Header()] = "",
+    session: AsyncSession = Depends(get_session),
+) -> User:
+    """FastAPI dependency wrapper around core.auth.get_current_user.
+
+    `get_current_user` takes plain (authorization, session) args; this wrapper
+    wires them up to FastAPI's Header + Depends system so routes can use it
+    directly via `Depends(current_user_dep)`.
+    """
+    return await get_current_user(authorization, session)
+
 
 PermissionMap = dict[str, ScopeEnum] | object
 
@@ -56,7 +73,7 @@ async def get_user_permissions(db: AsyncSession, user: User) -> PermissionMap:
 
 async def load_permissions(
     request: Request,
-    user: User = Depends(get_current_user),
+    user: User = Depends(current_user_dep),
     db: AsyncSession = Depends(get_session),
 ) -> PermissionMap:
     """Per-request permission load; cached on request.state for request duration."""
@@ -102,9 +119,7 @@ def apply_scope(
     if scope == ScopeEnum.GLOBAL:
         return stmt
     if not hasattr(model, "__scope_map__"):
-        raise RuntimeError(
-            f"Model {model.__name__} has no __scope_map__ -- cannot apply_scope"
-        )
+        raise RuntimeError(f"Model {model.__name__} has no __scope_map__ -- cannot apply_scope")
     field_name = model.__scope_map__[scope]
     field = getattr(model, field_name)
 
@@ -116,13 +131,9 @@ def apply_scope(
         # SQL-level: find user's dept path, then select all dept ids whose path
         # starts with user_path, then filter rows by that subtree.
         user_path = (
-            select(Department.path)
-            .where(Department.id == user.department_id)
-            .scalar_subquery()
+            select(Department.path).where(Department.id == user.department_id).scalar_subquery()
         )
-        subtree = select(Department.id).where(
-            Department.path.like(func.concat(user_path, "%"))
-        )
+        subtree = select(Department.id).where(Department.path.like(func.concat(user_path, "%")))
         return stmt.where(field.in_(subtree))
     raise RuntimeError(f"Unknown scope: {scope}")
 
