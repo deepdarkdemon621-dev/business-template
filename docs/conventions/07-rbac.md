@@ -16,9 +16,11 @@ users              (id, email, department_id, is_superadmin)
 `resource:action`, lowercase, hyphen-separated resource names.
 
 **Allowed actions (fixed vocabulary):**
-`create`, `read`, `update`, `delete`, `list`, `export`, `approve`, `reject`, `publish`, `invoke`
+`create`, `read`, `update`, `delete`, `list`, `export`, `approve`, `reject`, `publish`, `invoke`, `assign`
 
-Examples: `user:create`, `department:delete`, `form-template:publish`, `ai-analysis:invoke`.
+Examples: `user:create`, `department:delete`, `form-template:publish`, `ai-analysis:invoke`, `role:assign`.
+
+`assign` covers granting/revoking a linkage (e.g. assigning a role to a user, attaching a department). It is distinct from `update` (which modifies the target entity itself) because grant/revoke operates on the join row, not the target.
 
 Extending the action vocabulary requires a PR review. Don't invent `yeet` or `nuke`.
 

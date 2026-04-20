@@ -21,6 +21,7 @@ class ActionEnum(StrEnum):
     REJECT = "reject"
     PUBLISH = "publish"
     INVOKE = "invoke"
+    ASSIGN = "assign"
 
 
 _SCOPE_PRIORITY: dict[ScopeEnum, int] = {
