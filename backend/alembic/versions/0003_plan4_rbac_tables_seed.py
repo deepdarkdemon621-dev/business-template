@@ -225,8 +225,79 @@ def _seed(conn) -> None:
 
 
 def _seed_roles(conn, perm_ids: dict[str, uuid.UUID]) -> None:
-    """Populated in C3."""
-    pass
+    roles_table = sa.table(
+        "roles",
+        sa.column("id", UUID(as_uuid=True)),
+        sa.column("code", sa.String),
+        sa.column("name", sa.String),
+        sa.column("is_builtin", sa.Boolean),
+        sa.column("is_superadmin", sa.Boolean),
+    )
+    role_perm_table = sa.table(
+        "role_permissions",
+        sa.column("role_id", UUID(as_uuid=True)),
+        sa.column("permission_id", UUID(as_uuid=True)),
+        sa.column("scope", sa.String),
+    )
+
+    # superadmin — no role_permissions rows (short-circuits via is_superadmin)
+    superadmin_id = uuid.uuid4()
+    conn.execute(
+        roles_table.insert().values(
+            id=superadmin_id,
+            code="superadmin",
+            name="Super Administrator",
+            is_builtin=True,
+            is_superadmin=True,
+        )
+    )
+
+    # admin — all 15 codes at scope=global
+    admin_id = uuid.uuid4()
+    conn.execute(
+        roles_table.insert().values(
+            id=admin_id,
+            code="admin",
+            name="Administrator",
+            is_builtin=True,
+            is_superadmin=False,
+        )
+    )
+    for _code, pid in perm_ids.items():
+        conn.execute(
+            role_perm_table.insert().values(
+                role_id=admin_id, permission_id=pid, scope="global",
+            )
+        )
+
+    # member — narrow read set
+    member_id = uuid.uuid4()
+    conn.execute(
+        roles_table.insert().values(
+            id=member_id,
+            code="member",
+            name="Member",
+            is_builtin=True,
+            is_superadmin=False,
+        )
+    )
+    member_grants = [
+        ("user:read", "own"),
+        ("role:read", "global"),
+        ("role:list", "global"),
+        ("department:read", "dept_tree"),
+        ("department:list", "dept_tree"),
+        ("permission:read", "global"),
+        ("permission:list", "global"),
+    ]
+    for code, scope in member_grants:
+        conn.execute(
+            role_perm_table.insert().values(
+                role_id=member_id,
+                permission_id=perm_ids[code],
+                scope=scope,
+            )
+        )
 
 
 def _seed_root_dept_and_admin(conn) -> None:

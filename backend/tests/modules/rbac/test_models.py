@@ -20,7 +20,8 @@ async def test_department_insert_and_path(db_session: AsyncSession):
 @pytest.mark.asyncio
 async def test_permission_code_unique(db_session: AsyncSession):
     from app.modules.rbac.models import Permission
-    p = Permission(code="user:read", resource="user", action="read", description="Read a user")
+    # Use a code outside the 15-seed set so this test works against a pre-seeded DB.
+    p = Permission(code="custom:read", resource="custom", action="read", description="Custom read perm")
     db_session.add(p)
     await db_session.flush()
     assert p.id is not None
@@ -42,3 +43,30 @@ async def test_seed_inserts_15_permissions(db_session: AsyncSession):
 
     result = await db_session.execute(select(func.count(Permission.id)))
     assert result.scalar() == 15
+
+
+@pytest.mark.asyncio
+async def test_seed_roles(db_session: AsyncSession):
+    from app.modules.rbac.models import Role, RolePermission
+
+    result = await db_session.execute(select(Role).where(Role.code == "superadmin"))
+    sa_role = result.scalar_one()
+    assert sa_role.is_superadmin is True
+
+    result = await db_session.execute(select(Role).where(Role.code == "admin"))
+    admin = result.scalar_one()
+    result = await db_session.execute(
+        select(func.count(RolePermission.permission_id)).where(
+            RolePermission.role_id == admin.id
+        )
+    )
+    assert result.scalar() == 15
+
+    result = await db_session.execute(select(Role).where(Role.code == "member"))
+    member = result.scalar_one()
+    result = await db_session.execute(
+        select(func.count(RolePermission.permission_id)).where(
+            RolePermission.role_id == member.id
+        )
+    )
+    assert result.scalar() == 7
