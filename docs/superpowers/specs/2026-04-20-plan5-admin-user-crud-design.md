@@ -173,7 +173,7 @@ class User(Base):
 
 `DELETE /users/{id}` triggers the `delete` guard; `PATCH` with `is_active=false` triggers `deactivate`; `DELETE /users/{id}/roles/{role_id}` triggers `strip_role`. `LastOfKind("superadmin")` inspects the `ctx.role_code` passed by the service call and no-ops when it doesn't match, so the guard is cheap to always attach.
 
-Failures raise `GuardViolationError(code, ctx)` → surfaces as Problem Details with a stable code (`self_protection`, `last_superadmin`).
+Failures raise `GuardViolationError(code, ctx)` → surfaces as Problem Details with a stable code (`self-protection`, `last-of-kind`). Kebab-case matches existing guard codes (`has-dependents`, `state-not-allowed`).
 
 ## 7. Frontend specifics
 
@@ -222,9 +222,9 @@ Per `docs/conventions/10-form-consistency.md`, every field in `UserCreateIn` / `
 ### 8.1 Backend
 - Per-endpoint: 200 happy path, 403 when permission missing, 403 when out of scope, 404 when id unknown.
 - Guards:
-  - non-superadmin tries `DELETE /users/{self.id}` → 403 `self_protection`.
+  - non-superadmin tries `DELETE /users/{self.id}` → 403 `self-protection`.
   - non-superadmin tries `PATCH /users/{self.id}` with `is_active=false` → 403.
-  - non-superadmin tries `DELETE /users/{last_superadmin}/roles/{superadmin_role.id}` → 403 `last_superadmin`.
+  - non-superadmin tries `DELETE /users/{last_superadmin}/roles/{superadmin_role.id}` → 403 `last-of-kind`.
   - superadmin performs all three → 200 (bypass verified).
 - Role assign idempotency: double-POST same (user, role) → 200 both times; DELETE unassigned role → 404 with stable code.
 - Soft delete: `DELETE /users/{id}` → subsequent `GET /users/{id}` still returns (with `is_active=false`); user is excluded from default list, visible when `?is_active=false`.
@@ -247,7 +247,7 @@ Before tagging `v0.5.0-admin-user-crud`:
 5. **Browser smoke test** (per `feedback_smoke_test_before_complete`):
    - Log in as superadmin → create user (manual password) → log out → log in as new user → forced to `/password-change` → change → land on dashboard.
    - As superadmin: assign/revoke roles on the new user → user re-login → `/me/permissions` reflects new grants (plus confirm nav/focus refetch works within the same session).
-   - As non-superadmin admin: attempt self-deactivate → see `self_protection` error; attempt to remove superadmin role from the last superadmin → see `last_superadmin` error.
+   - As non-superadmin admin: attempt self-deactivate → see `self-protection` error; attempt to remove superadmin role from the last superadmin → see `last-of-kind` error.
    - Soft-delete a user → vanishes from default list → reappears with `?is_active=false` filter toggle.
 6. `convention-auditor` subagent invocation → `VERDICT: PASS`.
 7. Only then tag and update memory (`plan5_status.md`).

@@ -8,7 +8,9 @@ from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.database import Base
+from app.core.guards import SelfProtection
 from app.modules.rbac.constants import ScopeEnum
+from app.modules.rbac.guards import LastOfKind
 
 
 class User(Base):
@@ -38,10 +40,33 @@ class User(Base):
 
     sessions: Mapped[list[UserSession]] = relationship(back_populates="user", cascade="all, delete")
 
+    # Loaded via selectin so guards can read is_superadmin synchronously.
+    # user_roles has two FKs to users (user_id + granted_by), so we must
+    # name both join legs explicitly to avoid AmbiguousForeignKeysError.
+    roles: Mapped[list[object]] = relationship(
+        "Role",
+        secondary="user_roles",
+        primaryjoin="User.id == UserRole.user_id",
+        secondaryjoin="UserRole.role_id == Role.id",
+        lazy="selectin",
+        viewonly=True,
+    )
+
+    @property
+    def is_superadmin(self) -> bool:
+        """True when the user holds at least one superadmin role."""
+        return any(getattr(r, "is_superadmin", False) for r in self.roles)
+
     __scope_map__ = {
         ScopeEnum.DEPT_TREE: "department_id",
         ScopeEnum.DEPT: "department_id",
         ScopeEnum.OWN: "id",
+    }
+
+    __guards__ = {
+        "delete": [SelfProtection()],
+        "deactivate": [SelfProtection()],
+        "strip_role": [SelfProtection(), LastOfKind("superadmin")],
     }
 
 

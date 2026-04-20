@@ -80,6 +80,13 @@ class SelfProtection:
     ) -> None:
         if actor is None:
             return
+        # `is_superadmin` reads the async-mapped `roles` relationship; hydrate it
+        # first so a freshly-flushed (not-yet-queried) actor doesn't trigger a
+        # sync lazy-load inside this async context.
+        awaitable_attrs = getattr(actor, "awaitable_attrs", None)
+        roles_awaitable = getattr(awaitable_attrs, "roles", None)
+        if roles_awaitable is not None:
+            await roles_awaitable
         if getattr(actor, "is_superadmin", False):
             return
         if getattr(actor, "id", None) == getattr(instance, "id", None):
