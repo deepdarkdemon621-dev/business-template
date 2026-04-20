@@ -27,3 +27,12 @@ async def get_user_with_roles(
     )
     roles = list((await session.execute(role_stmt)).scalars().all())
     return u, roles
+
+
+async def get_roles_for_user(session: AsyncSession, user_id: uuid.UUID) -> list[Role]:
+    stmt = (
+        select(Role)
+        .join(UserRole, UserRole.role_id == Role.id)
+        .where(UserRole.user_id == user_id)
+    )
+    return list((await session.execute(stmt)).scalars().all())

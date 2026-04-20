@@ -3,6 +3,7 @@ from __future__ import annotations
 import pytest
 import pytest_asyncio
 from httpx import AsyncClient
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.auth import hash_password
@@ -31,7 +32,7 @@ async def admin_token(
     for code in ("user:list", "user:read"):
         perm = (
             await db_session.execute(
-                __import__("sqlalchemy").select(Permission).where(Permission.code == code)
+                select(Permission).where(Permission.code == code)
             )
         ).scalar_one()
         db_session.add(
@@ -70,14 +71,27 @@ async def test_list_users_forbidden_without_perm(
     assert resp.status_code == 403
 
 
-async def test_list_users_is_active_filter(admin_token: tuple[AsyncClient, str]) -> None:
+async def test_list_users_is_active_filter(
+    admin_token: tuple[AsyncClient, str], db_session: AsyncSession
+) -> None:
     client, token = admin_token
+    inactive = User(
+        email="inactive@ex.com",
+        password_hash=hash_password("pw-aaa111"),
+        full_name="I",
+        is_active=False,
+    )
+    db_session.add(inactive)
+    await db_session.commit()
+
     resp = await client.get(
         "/api/v1/users?is_active=false",
         headers={"Authorization": f"Bearer {token}"},
     )
     assert resp.status_code == 200
-    for u in resp.json()["items"]:
+    items = resp.json()["items"]
+    assert len(items) >= 1
+    for u in items:
         assert u["isActive"] is False
 
 

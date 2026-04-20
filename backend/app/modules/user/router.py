@@ -17,7 +17,7 @@ from app.core.permissions import (
 )
 from app.modules.auth.models import User
 from app.modules.rbac.models import Department
-from app.modules.user.crud import build_list_users_stmt, get_user_with_roles
+from app.modules.user.crud import build_list_users_stmt, get_roles_for_user
 from app.modules.user.schemas import (
     DepartmentSummaryOut,
     RoleSummaryOut,
@@ -43,13 +43,11 @@ async def list_users(
     stmt = build_list_users_stmt(is_active=is_active)
     stmt = apply_scope(stmt, user, "user:list", User, perms)
     raw = await paginate(db, stmt, pq)
-    items = [UserOut.model_validate(i, from_attributes=True) for i in raw.items]
+    meta = raw.model_dump()
+    meta.pop("items")
     return Page[UserOut](
-        items=items,
-        total=raw.total,
-        page=raw.page,
-        size=raw.size,
-        has_next=raw.has_next,
+        items=[UserOut.model_validate(i, from_attributes=True) for i in raw.items],
+        **meta,
     )
 
 
@@ -65,7 +63,7 @@ async def get_user(
 ) -> UserDetailOut:
     perms = await get_user_permissions(db, user)
     target = await load_in_scope(db, User, user_id, user, "user:read", perms)
-    _target, roles = await get_user_with_roles(db, user_id)
+    roles = await get_roles_for_user(db, user_id)
     dept = (
         await db.get(Department, target.department_id) if target.department_id else None
     )
