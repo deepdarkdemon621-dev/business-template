@@ -167,6 +167,8 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
+    # Clear dangling refs so a later re-upgrade can re-create the FK cleanly.
+    op.execute("UPDATE users SET department_id = NULL")
     op.drop_index("ix_users_department_id", table_name="users")
     op.drop_constraint("fk_users_department_id", "users", type_="foreignkey")
     op.drop_table("user_roles")
