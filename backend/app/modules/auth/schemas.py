@@ -3,12 +3,14 @@ from __future__ import annotations
 import uuid
 from datetime import datetime
 
+from pydantic import EmailStr
+
 from app.core.form_rules import must_match, password_policy
 from app.core.schemas import BaseSchema
 
 
 class LoginRequest(BaseSchema):
-    email: str
+    email: EmailStr
     password: str
     captcha: str | None = None
 
@@ -20,7 +22,7 @@ class TokenResponse(BaseSchema):
 
 class UserRead(BaseSchema):
     id: uuid.UUID
-    email: str
+    email: EmailStr
     full_name: str
     department_id: uuid.UUID | None
     is_active: bool
@@ -45,7 +47,7 @@ class PasswordChangeRequest(BaseSchema):
 
 
 class PasswordResetRequest(BaseSchema):
-    email: str
+    email: EmailStr
 
 
 class PasswordResetConfirmRequest(BaseSchema):

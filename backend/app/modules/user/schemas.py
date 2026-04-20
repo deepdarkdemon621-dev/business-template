@@ -17,8 +17,8 @@ class RoleSummaryOut(BaseSchema):
 
 class DepartmentSummaryOut(BaseSchema):
     id: uuid.UUID
-    name: str
-    path: str
+    name: str = Field(max_length=100)
+    path: str = Field(max_length=500)
 
 
 class UserCreateIn(BaseSchema):
