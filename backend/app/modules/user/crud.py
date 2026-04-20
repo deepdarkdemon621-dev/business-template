@@ -9,7 +9,7 @@ from app.modules.auth.models import User
 from app.modules.rbac.models import Role, UserRole
 
 
-def build_list_users_stmt(is_active: bool | None = True) -> Select:
+def build_list_users_stmt(is_active: bool | None = True) -> Select[tuple[User]]:
     stmt = select(User).order_by(User.created_at.desc())
     if is_active is not None:
         stmt = stmt.where(User.is_active.is_(is_active))

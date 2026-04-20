@@ -31,10 +31,33 @@ async def test_build_list_users_stmt_default_excludes_inactive(
 ) -> None:
     u, _ = seeded
     u.is_active = False
+    active = User(
+        email="active@ex.com", password_hash=hash_password("pw-aaa111"), full_name="Active"
+    )
+    db_session.add(active)
     await db_session.flush()
     stmt = build_list_users_stmt(is_active=True)
     rows = (await db_session.execute(stmt)).scalars().all()
+    assert rows
     assert all(row.is_active for row in rows)
+    assert u.id not in {r.id for r in rows}
+
+
+async def test_build_list_users_stmt_none_shows_all(
+    db_session: AsyncSession, seeded: tuple[User, Role]
+) -> None:
+    u, _ = seeded
+    u.is_active = False
+    active = User(
+        email="active2@ex.com", password_hash=hash_password("pw-aaa111"), full_name="A2"
+    )
+    db_session.add(active)
+    await db_session.flush()
+    stmt = build_list_users_stmt(is_active=None)
+    rows = (await db_session.execute(stmt)).scalars().all()
+    ids = {r.id for r in rows}
+    assert u.id in ids
+    assert active.id in ids
 
 
 async def test_build_list_users_stmt_is_active_false_shows_only_inactive(
