@@ -25,7 +25,12 @@ class GuardViolationError(Exception):
 @runtime_checkable
 class Guard(Protocol):
     async def check(
-        self, session: AsyncSession, instance: Any, *, actor: Any | None = None
+        self,
+        session: AsyncSession,
+        instance: Any,
+        *,
+        actor: Any | None = None,
+        **kwargs: Any,
     ) -> None: ...
 
 
@@ -35,7 +40,7 @@ class NoDependents:
         self.fk_col = _validate_ident(fk_col)
 
     async def check(
-        self, session: AsyncSession, instance: Any, *, actor: Any | None = None
+        self, session: AsyncSession, instance: Any, *, actor: Any | None = None, **_: Any
     ) -> None:
         stmt = (
             select(func.count())
@@ -57,7 +62,7 @@ class StateAllows:
         self.allowed = list(allowed)
 
     async def check(
-        self, session: AsyncSession, instance: Any, *, actor: Any | None = None
+        self, session: AsyncSession, instance: Any, *, actor: Any | None = None, **_: Any
     ) -> None:
         actual = getattr(instance, self.field)
         if actual not in self.allowed:
@@ -71,7 +76,7 @@ class SelfProtection:
     """Forbid an action where the actor is the target. Bypassed for superadmins."""
 
     async def check(
-        self, session: AsyncSession, instance: Any, *, actor: Any | None = None
+        self, session: AsyncSession, instance: Any, *, actor: Any | None = None, **_: Any
     ) -> None:
         if actor is None:
             return
@@ -88,10 +93,50 @@ class ServiceBase:
     model: type
 
     async def delete(
-        self, session: AsyncSession, instance: Any, *, actor: Any | None = None
+        self, session: AsyncSession, instance: Any, *, actor: Any | None = None, **kwargs: Any
     ) -> None:
         guards = getattr(self.model, "__guards__", {}).get("delete", [])
         for guard in guards:
-            await guard.check(session, instance, actor=actor)
+            await guard.check(session, instance, actor=actor, **kwargs)
         async with session.begin():
             await session.delete(instance)
+
+
+class LastOfKind:
+    """Forbid removing role `role_code` from the sole remaining holder.
+
+    Expects `role_code` in kwargs; no-ops when it doesn't match the configured role.
+    Bypassed for superadmins.
+    """
+
+    def __init__(self, role_code: str) -> None:
+        self.role_code = role_code
+
+    async def check(
+        self,
+        session: AsyncSession,
+        instance: Any,
+        *,
+        actor: Any | None = None,
+        role_code: str | None = None,
+        **_: Any,
+    ) -> None:
+        if role_code != self.role_code:
+            return
+        if actor is not None and getattr(actor, "is_superadmin", False):
+            return
+
+        # late import keeps guards.py free of module cycles
+        from app.modules.rbac.models import Role, UserRole
+
+        stmt = (
+            select(func.count(UserRole.user_id))
+            .join(Role, Role.id == UserRole.role_id)
+            .where(Role.code == self.role_code)
+        )
+        total = (await session.execute(stmt)).scalar_one()
+        if total <= 1:
+            raise GuardViolationError(
+                code="last-of-kind",
+                ctx={"role_code": self.role_code, "remaining": int(total)},
+            )
