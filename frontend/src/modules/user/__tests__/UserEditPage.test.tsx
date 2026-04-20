@@ -11,7 +11,14 @@ vi.mock("@/modules/user/api", () => ({
   assignRole: vi.fn(),
   revokeRole: vi.fn(),
 }));
-import { createUser } from "@/modules/user/api";
+import {
+  assignRole,
+  createUser,
+  getUser,
+  listRoles,
+  revokeRole,
+  updateUser,
+} from "@/modules/user/api";
 import { UserEditPage } from "@/modules/user/UserEditPage";
 
 describe("UserEditPage create mode", () => {
@@ -46,5 +53,50 @@ describe("UserEditPage create mode", () => {
     expect(createUser).toHaveBeenCalledWith(
       expect.objectContaining({ email: "c@ex.com", fullName: "C", password: "GoodOne123" })
     );
+  });
+});
+
+describe("UserEditPage edit mode", () => {
+  it("loads user, shows current roles, diffs and commits role changes on save", async () => {
+    (getUser as unknown as ReturnType<typeof vi.fn>).mockResolvedValue({
+      id: "u1",
+      email: "e@ex.com",
+      fullName: "E",
+      departmentId: null,
+      isActive: true,
+      mustChangePassword: false,
+      createdAt: "2026-04-20T00:00:00Z",
+      updatedAt: "2026-04-20T00:00:00Z",
+      roles: [{ id: "r1", code: "member", name: "Member" }],
+      department: null,
+    });
+    (listRoles as unknown as ReturnType<typeof vi.fn>).mockResolvedValue([
+      { id: "r1", code: "member", name: "Member" },
+      { id: "r2", code: "admin", name: "Admin" },
+    ]);
+    (updateUser as unknown as ReturnType<typeof vi.fn>).mockResolvedValue({});
+    (assignRole as unknown as ReturnType<typeof vi.fn>).mockResolvedValue(undefined);
+    (revokeRole as unknown as ReturnType<typeof vi.fn>).mockResolvedValue(undefined);
+
+    render(
+      <MemoryRouter initialEntries={["/admin/users/u1"]}>
+        <Routes>
+          <Route path="/admin/users/:id" element={<UserEditPage mode="edit" />} />
+          <Route path="/admin/users" element={<div>list</div>} />
+        </Routes>
+      </MemoryRouter>
+    );
+
+    await waitFor(() => expect(screen.getByDisplayValue("E")).toBeInTheDocument());
+
+    // Member is currently checked; Admin is not. Toggle: uncheck member, check admin.
+    await userEvent.click(screen.getByRole("checkbox", { name: /member/i }));
+    await userEvent.click(screen.getByRole("checkbox", { name: /admin/i }));
+
+    await userEvent.click(screen.getByRole("button", { name: /保存|save/i }));
+
+    await waitFor(() => expect(updateUser).toHaveBeenCalled());
+    expect(revokeRole).toHaveBeenCalledWith("u1", "r1");
+    expect(assignRole).toHaveBeenCalledWith("u1", "r2");
   });
 });

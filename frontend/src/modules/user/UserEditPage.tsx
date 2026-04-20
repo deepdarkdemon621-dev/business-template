@@ -1,10 +1,18 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { problemMessage } from "@/lib/problem-details";
-import { createUser, updateUser } from "./api";
+import { RoleAssignmentPanel } from "./components/RoleAssignmentPanel";
+import {
+  assignRole,
+  createUser,
+  getUser,
+  revokeRole,
+  updateUser,
+} from "./api";
+import type { UserDetail } from "./types";
 
 export type UserEditPageProps = { mode: "create" | "edit" };
 
@@ -14,10 +22,23 @@ export function UserEditPage({ mode }: UserEditPageProps) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
+  const [roleIds, setRoleIds] = useState<string[]>([]);
+  const [initialRoleIds, setInitialRoleIds] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [detail, setDetail] = useState<UserDetail | null>(null);
 
-  // Edit-mode loader added in Task F3.
+  useEffect(() => {
+    if (mode !== "edit" || !id) return;
+    void getUser(id).then((d) => {
+      setDetail(d);
+      setEmail(d.email);
+      setFullName(d.fullName);
+      const rIds = d.roles.map((r) => r.id);
+      setRoleIds(rIds);
+      setInitialRoleIds(rIds);
+    });
+  }, [id, mode]);
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -34,6 +55,12 @@ export function UserEditPage({ mode }: UserEditPageProps) {
         nav(`/admin/users/${created.id}`);
       } else if (mode === "edit" && id) {
         await updateUser(id, { fullName });
+        const toAdd = roleIds.filter((r) => !initialRoleIds.includes(r));
+        const toRemove = initialRoleIds.filter((r) => !roleIds.includes(r));
+        await Promise.all([
+          ...toAdd.map((rid) => assignRole(id, rid)),
+          ...toRemove.map((rid) => revokeRole(id, rid)),
+        ]);
         nav("/admin/users");
       }
     } catch (err) {
@@ -83,6 +110,12 @@ export function UserEditPage({ mode }: UserEditPageProps) {
             至少 10 个字符，需包含字母和数字。
           </p>
         </div>
+      ) : null}
+      {mode === "edit" && detail ? (
+        <RoleAssignmentPanel
+          initialRoleIds={initialRoleIds}
+          onSelectionChange={setRoleIds}
+        />
       ) : null}
       {error ? <p className="text-sm text-destructive">{error}</p> : null}
       <div className="flex gap-2">
