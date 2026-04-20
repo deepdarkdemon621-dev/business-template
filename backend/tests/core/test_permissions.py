@@ -64,3 +64,30 @@ def test_require_perm_returns_callable():
 
     dep = require_perm("user:delete")
     assert callable(dep)
+
+
+@pytest.mark.asyncio
+async def test_apply_scope_global_no_filter(db_session: AsyncSession):
+    """Superadmin -> no added WHERE, stmt unchanged."""
+    from sqlalchemy import select as sa_select
+
+    from app.core.permissions import apply_scope, get_user_permissions
+
+    u = User(
+        id=uuid.uuid4(),
+        email="ag@example.com",
+        full_name="AG",
+        password_hash="x",
+        is_active=True,
+    )
+    db_session.add(u)
+    sr = (
+        await db_session.execute(sa_select(Role).where(Role.code == "superadmin"))
+    ).scalar_one()
+    db_session.add(UserRole(user_id=u.id, role_id=sr.id))
+    await db_session.flush()
+
+    perms = await get_user_permissions(db_session, u)
+    stmt = sa_select(User)
+    filtered = apply_scope(stmt, u, "user:list", User, perms)
+    assert str(filtered.compile()) == str(stmt.compile())

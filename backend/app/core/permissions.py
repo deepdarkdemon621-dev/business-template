@@ -1,14 +1,14 @@
 from __future__ import annotations
 
 from fastapi import Depends, HTTPException, Request, status
-from sqlalchemy import select
+from sqlalchemy import Select, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.auth import get_current_user
 from app.core.database import get_session
 from app.modules.auth.models import User
 from app.modules.rbac.constants import SUPERADMIN_ALL, ScopeEnum, widest
-from app.modules.rbac.models import Permission, Role, RolePermission, UserRole
+from app.modules.rbac.models import Department, Permission, Role, RolePermission, UserRole
 
 __all__ = [
     "PermissionMap",
@@ -17,6 +17,7 @@ __all__ = [
     "get_user_permissions",
     "load_permissions",
     "require_perm",
+    "apply_scope",
 ]
 
 PermissionMap = dict[str, ScopeEnum] | object
@@ -80,3 +81,46 @@ def require_perm(code: str):
             )
 
     return _dep
+
+
+def apply_scope(
+    stmt: Select,
+    user: User,
+    code: str,
+    model: type,
+    perms: PermissionMap,
+) -> Select:
+    """Add WHERE clause narrowing stmt to rows user can see for code."""
+    if perms is SUPERADMIN_ALL:
+        return stmt
+    assert isinstance(perms, dict)
+    scope = perms.get(code)
+    if scope is None:
+        # No permission at all -- return empty result
+        return stmt.where(False)
+    if scope == ScopeEnum.GLOBAL:
+        return stmt
+    if not hasattr(model, "__scope_map__"):
+        raise RuntimeError(
+            f"Model {model.__name__} has no __scope_map__ -- cannot apply_scope"
+        )
+    field_name = model.__scope_map__[scope]
+    field = getattr(model, field_name)
+
+    if scope == ScopeEnum.OWN:
+        return stmt.where(field == user.id)
+    if scope == ScopeEnum.DEPT:
+        return stmt.where(field == user.department_id)
+    if scope == ScopeEnum.DEPT_TREE:
+        # SQL-level: find user's dept path, then select all dept ids whose path
+        # starts with user_path, then filter rows by that subtree.
+        user_path = (
+            select(Department.path)
+            .where(Department.id == user.department_id)
+            .scalar_subquery()
+        )
+        subtree = select(Department.id).where(
+            Department.path.like(func.concat(user_path, "%"))
+        )
+        return stmt.where(field.in_(subtree))
+    raise RuntimeError(f"Unknown scope: {scope}")
