@@ -21,8 +21,11 @@ export function TopBar() {
           variant="ghost"
           size="sm"
           onClick={async () => {
-            await logout();
-            nav("/login");
+            try {
+              await logout();
+            } finally {
+              nav("/login");
+            }
           }}
         >
           登出

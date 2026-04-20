@@ -12,7 +12,7 @@ export function Sidebar() {
 
   return (
     <aside className="flex w-60 shrink-0 flex-col border-r bg-muted/20 p-4">
-      <nav className="flex flex-col gap-1">
+      <nav aria-label="Main navigation" className="flex flex-col gap-1">
         {visible.map((item) => (
           <NavLink
             key={item.path}
