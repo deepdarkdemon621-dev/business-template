@@ -1,5 +1,6 @@
 import { BrowserRouter, Route, Routes } from "react-router-dom";
 import { AuthProvider } from "@/lib/auth";
+import { AppShell } from "@/components/layout/AppShell";
 import { PermissionsProvider } from "@/modules/rbac/PermissionsProvider";
 import { ForbiddenPage } from "@/modules/rbac/ForbiddenPage";
 import { LoginPage } from "@/modules/auth/LoginPage";
@@ -23,30 +24,19 @@ export default function App() {
               element={<PasswordResetConfirmPage />}
             />
             <Route path="/403" element={<ForbiddenPage />} />
+
             <Route
-              path="/password-change"
               element={
                 <RequireAuth>
-                  <PasswordChangePage />
+                  <AppShell />
                 </RequireAuth>
               }
-            />
-            <Route
-              path="/me/sessions"
-              element={
-                <RequireAuth>
-                  <SessionsPage />
-                </RequireAuth>
-              }
-            />
-            <Route
-              path="/"
-              element={
-                <RequireAuth>
-                  <DashboardPage />
-                </RequireAuth>
-              }
-            />
+            >
+              <Route path="/" element={<DashboardPage />} />
+              <Route path="/password-change" element={<PasswordChangePage />} />
+              <Route path="/me/sessions" element={<SessionsPage />} />
+              {/* user routes added in Phase F */}
+            </Route>
           </Routes>
         </PermissionsProvider>
       </AuthProvider>
