@@ -3,7 +3,7 @@ from __future__ import annotations
 import uuid
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Query, Response
+from fastapi import APIRouter, Depends, Query, Response, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_session
@@ -18,7 +18,7 @@ from app.core.permissions import (
     require_perm,
 )
 from app.modules.auth.models import User
-from app.modules.rbac.models import Department
+from app.modules.rbac.models import Department, Role
 from app.modules.user.crud import build_list_users_stmt, get_roles_for_user
 from app.modules.user.schemas import (
     DepartmentSummaryOut,
@@ -28,7 +28,13 @@ from app.modules.user.schemas import (
     UserOut,
     UserUpdateIn,
 )
-from app.modules.user.service import create_user, soft_delete_user, update_user
+from app.modules.user.service import (
+    assign_role,
+    create_user,
+    revoke_role,
+    soft_delete_user,
+    update_user,
+)
 
 router = APIRouter(tags=["user"])
 
@@ -145,3 +151,51 @@ async def delete_user_endpoint(
         raise _guard_to_problem(e) from e
     await db.commit()
     return Response(status_code=204)
+
+
+@router.post(
+    "/users/{user_id}/roles/{role_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    dependencies=[Depends(require_perm("user:assign"))],
+)
+async def assign_role_endpoint(
+    user_id: uuid.UUID,
+    role_id: uuid.UUID,
+    user: User = Depends(current_user_dep),
+    db: AsyncSession = Depends(get_session),
+) -> Response:
+    perms = await get_user_permissions(db, user)
+    target = await load_in_scope(db, User, user_id, user, "user:assign", perms)
+    role = await db.get(Role, role_id)
+    if role is None:
+        raise ProblemDetails(code="role-not-found", status=404, detail="Role not found.")
+    try:
+        await assign_role(db, target, role, actor=user)
+    except GuardViolationError as e:
+        raise _guard_to_problem(e) from e
+    await db.commit()
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.delete(
+    "/users/{user_id}/roles/{role_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    dependencies=[Depends(require_perm("user:assign"))],
+)
+async def revoke_role_endpoint(
+    user_id: uuid.UUID,
+    role_id: uuid.UUID,
+    user: User = Depends(current_user_dep),
+    db: AsyncSession = Depends(get_session),
+) -> Response:
+    perms = await get_user_permissions(db, user)
+    target = await load_in_scope(db, User, user_id, user, "user:assign", perms)
+    role = await db.get(Role, role_id)
+    if role is None:
+        raise ProblemDetails(code="role-not-found", status=404, detail="Role not found.")
+    try:
+        await revoke_role(db, target, role, actor=user)
+    except GuardViolationError as e:
+        raise _guard_to_problem(e) from e
+    await db.commit()
+    return Response(status_code=status.HTTP_204_NO_CONTENT)

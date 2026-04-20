@@ -49,14 +49,10 @@ async def soft_delete_user(session: AsyncSession, target: User, *, actor: User) 
     await session.flush()
 
 
-async def assign_role(
-    session: AsyncSession, target: User, role: Role, *, actor: User
-) -> None:
+async def assign_role(session: AsyncSession, target: User, role: Role, *, actor: User) -> None:
     existing = (
         await session.execute(
-            select(UserRole).where(
-                UserRole.user_id == target.id, UserRole.role_id == role.id
-            )
+            select(UserRole).where(UserRole.user_id == target.id, UserRole.role_id == role.id)
         )
     ).scalar_one_or_none()
     if existing is not None:
@@ -65,14 +61,10 @@ async def assign_role(
     await session.flush()
 
 
-async def revoke_role(
-    session: AsyncSession, target: User, role: Role, *, actor: User
-) -> None:
+async def revoke_role(session: AsyncSession, target: User, role: Role, *, actor: User) -> None:
     existing = (
         await session.execute(
-            select(UserRole).where(
-                UserRole.user_id == target.id, UserRole.role_id == role.id
-            )
+            select(UserRole).where(UserRole.user_id == target.id, UserRole.role_id == role.id)
         )
     ).scalar_one_or_none()
     if existing is None:
@@ -84,8 +76,6 @@ async def revoke_role(
 
     await _run_guards(session, "strip_role", target, actor=actor, role_code=role.code)
     await session.execute(
-        delete(UserRole).where(
-            UserRole.user_id == target.id, UserRole.role_id == role.id
-        )
+        delete(UserRole).where(UserRole.user_id == target.id, UserRole.role_id == role.id)
     )
     await session.flush()

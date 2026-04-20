@@ -42,11 +42,11 @@ async def test_role_is_superadmin_defaults_false(db_session: AsyncSession):
 
 
 @pytest.mark.asyncio
-async def test_seed_inserts_15_permissions(db_session: AsyncSession):
+async def test_seed_inserts_16_permissions(db_session: AsyncSession):
     from app.modules.rbac.models import Permission
 
     result = await db_session.execute(select(func.count(Permission.id)))
-    assert result.scalar() == 15
+    assert result.scalar() == 16
 
 
 @pytest.mark.asyncio

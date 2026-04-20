@@ -34,9 +34,7 @@ async def actor(db_session: AsyncSession) -> User:
 @pytest_asyncio.fixture
 async def superadmin_actor(db_session: AsyncSession) -> User:
     role = (
-        await db_session.execute(
-            select(Role).where(Role.code == SUPERADMIN_ROLE_CODE)
-        )
+        await db_session.execute(select(Role).where(Role.code == SUPERADMIN_ROLE_CODE))
     ).scalar_one()
     u = User(email="sa@ex.com", password_hash=hash_password("pw-aaa111"), full_name="SA")
     db_session.add(u)
@@ -63,9 +61,7 @@ async def test_create_user_hashes_password_and_sets_flags(
 
 
 async def test_update_user_applies_partial(db_session: AsyncSession, actor: User) -> None:
-    target = User(
-        email="t@ex.com", password_hash=hash_password("pw-aaa111"), full_name="Old Name"
-    )
+    target = User(email="t@ex.com", password_hash=hash_password("pw-aaa111"), full_name="Old Name")
     db_session.add(target)
     await db_session.flush()
 
@@ -90,9 +86,7 @@ async def test_soft_delete_blocked_when_self(db_session: AsyncSession, actor: Us
     assert ei.value.code == "self-protection"
 
 
-async def test_superadmin_can_self_delete(
-    db_session: AsyncSession, superadmin_actor: User
-) -> None:
+async def test_superadmin_can_self_delete(db_session: AsyncSession, superadmin_actor: User) -> None:
     await soft_delete_user(db_session, superadmin_actor, actor=superadmin_actor)
     await db_session.refresh(superadmin_actor)
     assert superadmin_actor.is_active is False
@@ -131,9 +125,7 @@ async def test_revoke_role_removes_row(db_session: AsyncSession, actor: User) ->
     assert count == 0
 
 
-async def test_revoke_role_raises_when_not_assigned(
-    db_session: AsyncSession, actor: User
-) -> None:
+async def test_revoke_role_raises_when_not_assigned(db_session: AsyncSession, actor: User) -> None:
     target = User(email="t5@ex.com", password_hash=hash_password("pw-aaa111"), full_name="T5")
     role = Role(code="rrr", name="RRR")
     db_session.add_all([target, role])

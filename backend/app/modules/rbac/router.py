@@ -16,8 +16,8 @@ from app.core.permissions import (
     require_perm,
 )
 from app.modules.auth.models import User
-from app.modules.rbac.models import Department
-from app.modules.rbac.schemas import DepartmentOut, MePermissionsOut
+from app.modules.rbac.models import Department, Role
+from app.modules.rbac.schemas import DepartmentOut, MePermissionsOut, RoleOut
 
 router = APIRouter(tags=["rbac"])
 
@@ -58,4 +58,25 @@ async def list_departments_endpoint(
         page=raw_page.page,
         size=raw_page.size,
         has_next=raw_page.has_next,
+    )
+
+
+@router.get(
+    "/roles",
+    response_model=Page[RoleOut],
+    dependencies=[Depends(require_perm("role:list"))],
+)
+async def list_roles(
+    pq: Annotated[PageQuery, Depends()],
+    db: AsyncSession = Depends(get_session),
+) -> Page[RoleOut]:
+    stmt = select(Role).order_by(Role.name)
+    raw = await paginate(db, stmt, pq)
+    items = [RoleOut.model_validate(r, from_attributes=True) for r in raw.items]
+    return Page[RoleOut](
+        items=items,
+        total=raw.total,
+        page=raw.page,
+        size=raw.size,
+        has_next=raw.has_next,
     )

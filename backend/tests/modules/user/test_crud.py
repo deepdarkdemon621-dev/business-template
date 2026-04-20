@@ -48,9 +48,7 @@ async def test_build_list_users_stmt_none_shows_all(
 ) -> None:
     u, _ = seeded
     u.is_active = False
-    active = User(
-        email="active2@ex.com", password_hash=hash_password("pw-aaa111"), full_name="A2"
-    )
+    active = User(email="active2@ex.com", password_hash=hash_password("pw-aaa111"), full_name="A2")
     db_session.add(active)
     await db_session.flush()
     stmt = build_list_users_stmt(is_active=None)
