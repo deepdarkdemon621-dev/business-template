@@ -10,6 +10,7 @@ import { PasswordChangePage } from "@/modules/auth/PasswordChangePage";
 import { SessionsPage } from "@/modules/auth/SessionsPage";
 import { RequireAuth } from "@/modules/auth/components/RequireAuth";
 import { DashboardPage } from "@/modules/dashboard/DashboardPage";
+import { UserListPage } from "@/modules/user/UserListPage";
 
 export default function App() {
   return (
@@ -35,7 +36,7 @@ export default function App() {
               <Route path="/" element={<DashboardPage />} />
               <Route path="/password-change" element={<PasswordChangePage />} />
               <Route path="/me/sessions" element={<SessionsPage />} />
-              {/* user routes added in Phase F */}
+              <Route path="/admin/users" element={<UserListPage />} />
             </Route>
           </Routes>
         </PermissionsProvider>
