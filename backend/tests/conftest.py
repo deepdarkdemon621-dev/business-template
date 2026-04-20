@@ -40,6 +40,11 @@ from sqlalchemy.ext.asyncio import AsyncSession  # noqa: E402
 
 from app.core.database import engine, get_session  # noqa: E402
 from app.main import app as _app  # noqa: E402
+from app.modules.auth.router import limiter as _auth_limiter  # noqa: E402
+
+# Disable slowapi rate limits in tests; the 20/min login cap is a prod-only
+# defence, and multi-test login flows would otherwise trip it nondeterministically.
+_auth_limiter.enabled = False
 
 
 @pytest.fixture

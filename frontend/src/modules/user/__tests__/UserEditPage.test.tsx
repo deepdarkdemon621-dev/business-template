@@ -94,7 +94,9 @@ describe("UserEditPage edit mode", () => {
     await waitFor(() => expect(screen.getByDisplayValue("E")).toBeInTheDocument());
 
     // Member is currently checked; Admin is not. Toggle: uncheck member, check admin.
-    await userEvent.click(screen.getByRole("checkbox", { name: /member/i }));
+    // findByRole awaits the role panel's own listRoles() resolve; getByRole is
+    // synchronous and races the separate fetch microtask under load.
+    await userEvent.click(await screen.findByRole("checkbox", { name: /member/i }));
     await userEvent.click(screen.getByRole("checkbox", { name: /admin/i }));
 
     await userEvent.click(screen.getByRole("button", { name: /保存|save/i }));
