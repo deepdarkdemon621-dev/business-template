@@ -68,7 +68,7 @@ class Permission(Base):
 
     __table_args__ = (
         CheckConstraint(
-            "action IN ('create','read','update','delete','list','export','approve','reject','publish','invoke')",
+            "action IN ('create','read','update','delete','list','export','approve','reject','publish','invoke','assign')",
             name="ck_permissions_action",
         ),
         Index("ix_permissions_resource_action", "resource", "action"),
