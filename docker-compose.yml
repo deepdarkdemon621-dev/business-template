@@ -69,6 +69,7 @@ services:
       SMTP_HOST: mailhog
     volumes:
       - ./backend:/app
+      - ./scripts:/scripts:ro
     depends_on:
       db: { condition: service_healthy }
       redis: { condition: service_healthy }
