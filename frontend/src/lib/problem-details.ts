@@ -29,3 +29,14 @@ export function isProblemDetails(x: unknown): x is ProblemDetails {
     typeof o.code === "string"
   );
 }
+
+export function problemMessage(err: unknown): string {
+  if (err && typeof err === "object" && "response" in err) {
+    const resp = (err as { response?: { data?: unknown } }).response;
+    if (resp && resp.data && isProblemDetails(resp.data)) {
+      return resp.data.detail;
+    }
+  }
+  if (err instanceof Error) return err.message;
+  return "请求失败，请重试。";
+}

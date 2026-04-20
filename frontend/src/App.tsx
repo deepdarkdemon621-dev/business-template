@@ -11,6 +11,7 @@ import { SessionsPage } from "@/modules/auth/SessionsPage";
 import { RequireAuth } from "@/modules/auth/components/RequireAuth";
 import { DashboardPage } from "@/modules/dashboard/DashboardPage";
 import { UserListPage } from "@/modules/user/UserListPage";
+import { UserEditPage } from "@/modules/user/UserEditPage";
 
 export default function App() {
   return (
@@ -37,6 +38,8 @@ export default function App() {
               <Route path="/password-change" element={<PasswordChangePage />} />
               <Route path="/me/sessions" element={<SessionsPage />} />
               <Route path="/admin/users" element={<UserListPage />} />
+              <Route path="/admin/users/new" element={<UserEditPage mode="create" />} />
+              <Route path="/admin/users/:id" element={<UserEditPage mode="edit" />} />
             </Route>
           </Routes>
         </PermissionsProvider>
