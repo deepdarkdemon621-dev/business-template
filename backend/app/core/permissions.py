@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from fastapi import Depends, Request
+from fastapi import Depends, HTTPException, Request, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -16,6 +16,7 @@ __all__ = [
     "public_endpoint",
     "get_user_permissions",
     "load_permissions",
+    "require_perm",
 ]
 
 PermissionMap = dict[str, ScopeEnum] | object
@@ -60,3 +61,22 @@ async def load_permissions(
     if not hasattr(request.state, "permissions"):
         request.state.permissions = await get_user_permissions(db, user)
     return request.state.permissions
+
+
+def require_perm(code: str):
+    """Dependency factory. Raises 403 if user lacks `code` at any scope.
+
+    Superadmin bypasses. Does NOT check scope — caller uses apply_scope/load_in_scope.
+    """
+
+    async def _dep(perms: PermissionMap = Depends(load_permissions)) -> None:
+        if perms is SUPERADMIN_ALL:
+            return
+        assert isinstance(perms, dict)
+        if code not in perms:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail={"type": "permission_denied", "missing": code},
+            )
+
+    return _dep

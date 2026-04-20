@@ -57,3 +57,10 @@ async def test_get_user_permissions_admin_role_returns_dict_with_global(
     assert isinstance(result, dict)
     assert len(result) == 15
     assert result["user:read"] == ScopeEnum.GLOBAL
+
+
+def test_require_perm_returns_callable():
+    from app.core.permissions import require_perm
+
+    dep = require_perm("user:delete")
+    assert callable(dep)
