@@ -49,18 +49,27 @@ def client() -> TestClient:
 
 @pytest_asyncio.fixture(scope="session", autouse=True)
 async def _prepare_test_db():
-    """Run alembic downgrade base + upgrade head once per session against test DB.
+    """Reset + migrate the test DB once per session.
 
-    Uses a subprocess so alembic's own `asyncio.run()` doesn't conflict with
-    pytest-asyncio's running event loop.
+    Drops the `public` schema and runs `alembic upgrade head` in a subprocess
+    (alembic's own `asyncio.run()` conflicts with pytest-asyncio's running
+    event loop, so we can't call it in-process). Schema drop is used instead
+    of `alembic downgrade base` because the latter fails if prior runs left
+    the DB half-migrated (e.g. tables dropped but alembic_version still at
+    head).
     """
+    from sqlalchemy import text
+    from sqlalchemy.ext.asyncio import create_async_engine
+
+    reset_engine = create_async_engine(_test_db, isolation_level="AUTOCOMMIT")
+    async with reset_engine.connect() as conn:
+        await conn.execute(text("DROP SCHEMA IF EXISTS public CASCADE"))
+        await conn.execute(text("CREATE SCHEMA public"))
+        await conn.execute(text("GRANT ALL ON SCHEMA public TO postgres"))
+        await conn.execute(text("GRANT ALL ON SCHEMA public TO public"))
+    await reset_engine.dispose()
+
     env = {**os.environ}
-    subprocess.run(
-        ["uv", "run", "alembic", "downgrade", "base"],
-        check=True,
-        env=env,
-        cwd=os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
-    )
     subprocess.run(
         ["uv", "run", "alembic", "upgrade", "head"],
         check=True,
@@ -85,14 +94,24 @@ async def db_session():
 
 @pytest_asyncio.fixture
 async def client_with_db(db_session: AsyncSession):
-    """TestClient with get_session overridden to yield the per-test rollback session."""
+    """AsyncClient (ASGI transport) with `get_session` overridden to yield the
+    per-test rollback session.
+
+    Uses httpx.AsyncClient + ASGITransport (not FastAPI's sync TestClient) so
+    that request handling stays in the same event loop as the `db_session`
+    fixture; otherwise asyncpg connections raise "Event loop is closed" when
+    dispatched via TestClient's thread-bridge.
+    """
+    from httpx import ASGITransport, AsyncClient
 
     async def _override():
         yield db_session
 
     _app.dependency_overrides[get_session] = _override
-    client = TestClient(_app)
-    try:
-        yield client
-    finally:
-        _app.dependency_overrides.clear()
+    async with AsyncClient(
+        transport=ASGITransport(app=_app), base_url="http://test"
+    ) as client:
+        try:
+            yield client
+        finally:
+            _app.dependency_overrides.clear()
