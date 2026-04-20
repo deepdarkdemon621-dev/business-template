@@ -11,6 +11,21 @@ Tracks "do later / V-next" features and improvements for this project. Whenever 
 
 ---
 
+## 2026-04-21 — Migrate `UserEditPage` to `<FormRenderer>` pipeline
+
+- **Source**: Plan 5 convention-auditor finding; user accepted deferral at tag time
+- **Context**: Plan 5 shipped `UserEditPage.tsx` with hand-rolled `<Input>`/`<Label>` trees for both create and edit modes. Convention 04 mandates every form go through `<FormRenderer schema={...} />` driven by ajv + JSON Schema + `x-rules`; every other form in the app (Login, PasswordChange, PasswordReset) already does. UserEditPage is the sole outlier and a real convention-04 violation that was deferred to keep Plan 5 prototype scope shippable.
+- **What's needed**:
+  - Derive a JSON Schema for `UserCreateIn` / `UserUpdateIn` (either hand-authored or lifted from generated OpenAPI)
+  - Replace the form body with `<FormRenderer>`; surface server-side `ProblemDetails.errors` via `setFieldErrors`
+  - Keep `<RoleAssignmentPanel>` as-is (it's not a form field — it's a role-diff panel); render it alongside the renderer in edit mode
+  - Register `passwordPolicy` custom rule in `@/lib/ajv.ts` if not already present
+  - Update `UserEditPage.test.tsx` to interact via the rendered fields (labels should still match the Chinese strings)
+- **Work estimate**: ~1 small plan's worth (~half-day). Touches UserEditPage + test + potentially one ajv rule registration.
+- **Dependencies**: none. Best landed before/with the Role-CRUD plan so both admin forms follow the same pattern from day 1.
+
+---
+
 ## 2026-04-20 — `LastOfKind` race condition under READ COMMITTED
 
 - **Source**: Plan 5 Task A2 code quality review

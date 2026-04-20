@@ -49,7 +49,7 @@ describe("UserEditPage create mode", () => {
 
     await userEvent.type(screen.getByLabelText(/邮箱|email/i), "c@ex.com");
     await userEvent.type(screen.getByLabelText(/姓名|full name/i), "C");
-    await userEvent.type(screen.getByLabelText(/^密码$|password/i), "GoodOne123");
+    await userEvent.type(screen.getByLabelText(/^密码 \*$|password/i), "GoodOne123");
 
     await userEvent.click(screen.getByRole("button", { name: /创建|create/i }));
 

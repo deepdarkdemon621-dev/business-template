@@ -106,7 +106,7 @@ export function UserEditPage({ mode }: UserEditPageProps) {
       </div>
       {mode === "create" ? (
         <div className="flex flex-col gap-2">
-          <Label htmlFor="password">密码</Label>
+          <Label htmlFor="password">密码 *</Label>
           <Input
             id="password"
             type="password"
