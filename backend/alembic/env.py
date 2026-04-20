@@ -17,6 +17,7 @@ settings = get_settings()
 config.set_main_option("sqlalchemy.url", settings.postgres_dsn)
 
 import app.modules.auth.models  # noqa: F401 — register models with Base.metadata
+import app.modules.rbac.models  # noqa: F401 — register models with Base.metadata
 from app.core.database import Base
 
 target_metadata = Base.metadata
