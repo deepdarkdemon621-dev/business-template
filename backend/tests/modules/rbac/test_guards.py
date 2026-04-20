@@ -1,14 +1,16 @@
 from __future__ import annotations
 
 from types import SimpleNamespace
+from unittest.mock import AsyncMock
 
 import pytest
 import pytest_asyncio
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.auth import hash_password
-from app.core.guards import GuardViolationError, LastOfKind
+from app.core.guards import GuardViolationError
 from app.modules.auth.models import User
+from app.modules.rbac.guards import LastOfKind
 from app.modules.rbac.models import Role, UserRole
 
 pytestmark = pytest.mark.asyncio
@@ -35,12 +37,12 @@ async def two_superadmins(db_session: AsyncSession, superadmin_role: Role) -> li
     return users
 
 
-async def test_passes_when_role_code_mismatch(db_session: AsyncSession) -> None:
+async def test_passes_when_role_code_mismatch() -> None:
+    session = AsyncMock()
     actor = SimpleNamespace(id=None, is_superadmin=False)
     target = SimpleNamespace(id=None)
     g = LastOfKind("superadmin")
-    # role_code in ctx is "member" — guard no-ops
-    await g.check(db_session, target, actor=actor, role_code="member")
+    await g.check(session, target, actor=actor, role_code="member")
 
 
 async def test_raises_when_removing_last_superadmin(
@@ -57,6 +59,8 @@ async def test_raises_when_removing_last_superadmin(
     with pytest.raises(GuardViolationError) as ei:
         await g.check(db_session, u, actor=actor, role_code="superadmin_test")
     assert ei.value.code == "last-of-kind"
+    assert ei.value.ctx["role_code"] == "superadmin_test"
+    assert ei.value.ctx["remaining"] == 1
 
 
 async def test_passes_when_another_superadmin_remains(

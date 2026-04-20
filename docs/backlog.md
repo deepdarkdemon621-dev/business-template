@@ -11,6 +11,19 @@ Tracks "do later / V-next" features and improvements for this project. Whenever 
 
 ---
 
+## 2026-04-20 — `LastOfKind` race condition under READ COMMITTED
+
+- **Source**: Plan 5 Task A2 code quality review
+- **Context**: `LastOfKind.check` reads the count of role holders, then the service layer deletes the `UserRole` row. Under PostgreSQL's default `READ COMMITTED` isolation, two concurrent admin sessions can both observe "2 superadmins", both pass the check, and both commit a removal — leaving zero. Rare in practice (concurrent admin ops on the same role), but the window exists.
+- **What's needed**:
+  - Either: take a row-level lock inside `LastOfKind.check` via `SELECT ... FOR UPDATE` on `Role` (serializes concurrent mutations of that role's members)
+  - Or: bump `strip_role` operations to `SERIALIZABLE` isolation (highest correctness, highest overhead)
+  - Or: add a DB CHECK constraint / trigger enforcing "at least one superadmin"
+- **Work estimate**: ~10 LOC + integration test with two concurrent sessions
+- **Dependencies**: none. Land alongside any isolation-level revisit (e.g. an audit-log or workflow plan that also cares about consistency).
+
+---
+
 ## 2026-04-20 — `last_login_at` field on User (operational visibility)
 
 - **Source**: Plan 5 design discussion (D3); scoped out of prototype
