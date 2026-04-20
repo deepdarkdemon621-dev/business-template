@@ -3,32 +3,14 @@ from __future__ import annotations
 import pytest
 import pytest_asyncio
 from httpx import AsyncClient
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.auth import hash_password
 from app.modules.auth.models import User
-from app.modules.rbac.models import Permission, Role, RolePermission, UserRole
+from app.modules.rbac.models import Role, UserRole
+from tests.modules.user.conftest import grant_perms, login
 
 pytestmark = pytest.mark.asyncio
-
-
-async def _login(client: AsyncClient, email: str, password: str) -> str:
-    resp = await client.post(
-        "/api/v1/auth/login", json={"email": email, "password": password}
-    )
-    assert resp.status_code == 200, resp.text
-    return resp.json()["accessToken"]
-
-
-async def _grant_perms(
-    db: AsyncSession, role: Role, codes: list[str], scope: str = "global"
-) -> None:
-    for code in codes:
-        perm = (
-            await db.execute(select(Permission).where(Permission.code == code))
-        ).scalar_one()
-        db.add(RolePermission(role_id=role.id, permission_id=perm.id, scope=scope))
 
 
 @pytest_asyncio.fixture
@@ -39,9 +21,9 @@ async def admin(
     db_session.add(role)
     await db_session.flush()
 
-    await _grant_perms(
+    await grant_perms(
         db_session,
-        role,
+        role.id,
         ["user:list", "user:read", "user:create", "user:update", "user:delete"],
     )
 
@@ -55,7 +37,7 @@ async def admin(
     db_session.add(UserRole(user_id=u.id, role_id=role.id))
     await db_session.commit()
 
-    token = await _login(client_with_db, "useradmin@ex.com", "Admin-pw1")
+    token = await login(client_with_db, "useradmin@ex.com", "Admin-pw1")
     return client_with_db, token, u
 
 
@@ -79,9 +61,7 @@ async def test_create_user_201(admin: tuple[AsyncClient, str, User]) -> None:
     assert "passwordHash" not in body
 
 
-async def test_create_user_weak_password_422(
-    admin: tuple[AsyncClient, str, User]
-) -> None:
+async def test_create_user_weak_password_422(admin: tuple[AsyncClient, str, User]) -> None:
     client, token, _ = admin
     payload = {
         "email": "weak@ex.com",

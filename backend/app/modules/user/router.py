@@ -69,9 +69,7 @@ async def get_user(
     perms = await get_user_permissions(db, user)
     target = await load_in_scope(db, User, user_id, user, "user:read", perms)
     roles = await get_roles_for_user(db, user_id)
-    dept = (
-        await db.get(Department, target.department_id) if target.department_id else None
-    )
+    dept = await db.get(Department, target.department_id) if target.department_id else None
     return UserDetailOut(
         **UserOut.model_validate(target, from_attributes=True).model_dump(),
         roles=[RoleSummaryOut.model_validate(r, from_attributes=True) for r in roles],
@@ -85,7 +83,7 @@ def _guard_to_problem(e: GuardViolationError) -> ProblemDetails:
     return ProblemDetails(
         code=e.code,
         status=403,
-        detail=str(e.code),
+        detail=f"Operation blocked by guard: {e.code}.",
         guard_violation=GuardViolationCtx(guard=e.code, params=e.ctx),
     )
 
