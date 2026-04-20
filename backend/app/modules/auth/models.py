@@ -8,6 +8,7 @@ from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.database import Base
+from app.modules.rbac.constants import ScopeEnum
 
 
 class User(Base):
@@ -19,7 +20,11 @@ class User(Base):
     email: Mapped[str] = mapped_column(String(255), unique=True, nullable=False, index=True)
     password_hash: Mapped[str] = mapped_column(String(255), nullable=False)
     full_name: Mapped[str] = mapped_column(String(100), nullable=False)
-    department_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
+    department_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("departments.id", ondelete="SET NULL"),
+        nullable=True,
+    )
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="true")
     must_change_password: Mapped[bool] = mapped_column(
         Boolean, nullable=False, server_default="false"
@@ -32,6 +37,12 @@ class User(Base):
     )
 
     sessions: Mapped[list[UserSession]] = relationship(back_populates="user", cascade="all, delete")
+
+    __scope_map__ = {
+        ScopeEnum.DEPT_TREE: "department_id",
+        ScopeEnum.DEPT: "department_id",
+        ScopeEnum.OWN: "id",
+    }
 
 
 class UserSession(Base):

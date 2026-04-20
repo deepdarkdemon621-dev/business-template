@@ -1,16 +1,16 @@
 from __future__ import annotations
 
-from enum import Enum
+from enum import StrEnum
 
 
-class ScopeEnum(str, Enum):
+class ScopeEnum(StrEnum):
     GLOBAL = "global"
     DEPT_TREE = "dept_tree"
     DEPT = "dept"
     OWN = "own"
 
 
-class ActionEnum(str, Enum):
+class ActionEnum(StrEnum):
     CREATE = "create"
     READ = "read"
     UPDATE = "update"
