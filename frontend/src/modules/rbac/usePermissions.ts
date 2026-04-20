@@ -13,5 +13,5 @@ export function usePermissions() {
     if (!s) return false;
     return minScope ? atLeast(s, minScope) : true;
   }
-  return { has, isSuperadmin, isLoading, refetch };
+  return { has, isSuperadmin, permissions, isLoading, refetch };
 }
