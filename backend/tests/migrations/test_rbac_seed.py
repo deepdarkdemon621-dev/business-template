@@ -23,7 +23,7 @@ def test_migration_round_trip_0003():
         )
 
     try:
-        run(["downgrade", "0002"])
+        run(["downgrade", "-1"])
         run(["upgrade", "head"])
     except Exception:
         # Restore to head before propagating, so later tests don't see partial state.
