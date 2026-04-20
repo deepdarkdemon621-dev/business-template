@@ -15,6 +15,7 @@ def test_migration_round_trip_0003():
     Uses a subprocess because `alembic/env.py` calls `asyncio.run()`
     which conflicts with pytest-asyncio's running event loop.
     """
+
     def run(args):
         subprocess.run(
             ["uv", "run", "alembic"] + args,

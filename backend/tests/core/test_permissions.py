@@ -46,9 +46,7 @@ async def test_get_user_permissions_admin_role_returns_dict_with_global(
         is_active=True,
     )
     db_session.add(user)
-    admin_role = (
-        await db_session.execute(select(Role).where(Role.code == "admin"))
-    ).scalar_one()
+    admin_role = (await db_session.execute(select(Role).where(Role.code == "admin"))).scalar_one()
     db_session.add(UserRole(user_id=user.id, role_id=admin_role.id))
     await db_session.flush()
 
@@ -81,9 +79,7 @@ async def test_apply_scope_global_no_filter(db_session: AsyncSession):
         is_active=True,
     )
     db_session.add(u)
-    sr = (
-        await db_session.execute(sa_select(Role).where(Role.code == "superadmin"))
-    ).scalar_one()
+    sr = (await db_session.execute(sa_select(Role).where(Role.code == "superadmin"))).scalar_one()
     db_session.add(UserRole(user_id=u.id, role_id=sr.id))
     await db_session.flush()
 
@@ -115,9 +111,7 @@ async def test_load_in_scope_returns_row_when_found(db_session: AsyncSession):
         is_active=True,
     )
     db_session.add_all([admin, target])
-    sr = (
-        await db_session.execute(sa_select(Role).where(Role.code == "superadmin"))
-    ).scalar_one()
+    sr = (await db_session.execute(sa_select(Role).where(Role.code == "superadmin"))).scalar_one()
     db_session.add(UserRole(user_id=admin.id, role_id=sr.id))
     await db_session.flush()
 

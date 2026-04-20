@@ -69,12 +69,14 @@ async def _prepare_test_db():
         await conn.execute(text("GRANT ALL ON SCHEMA public TO public"))
     await reset_engine.dispose()
 
+    # Session-scoped autouse fixture runs once at session start; alembic's
+    # asyncio.run() conflicts with pytest-asyncio's loop, so we MUST shell out.
     env = {**os.environ}
-    subprocess.run(
+    subprocess.run(  # noqa: ASYNC221
         ["uv", "run", "alembic", "upgrade", "head"],
         check=True,
         env=env,
-        cwd=os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+        cwd=os.path.dirname(os.path.dirname(os.path.abspath(__file__))),  # noqa: ASYNC240
     )
     yield
 
@@ -108,9 +110,7 @@ async def client_with_db(db_session: AsyncSession):
         yield db_session
 
     _app.dependency_overrides[get_session] = _override
-    async with AsyncClient(
-        transport=ASGITransport(app=_app), base_url="http://test"
-    ) as client:
+    async with AsyncClient(transport=ASGITransport(app=_app), base_url="http://test") as client:
         try:
             yield client
         finally:

@@ -81,9 +81,7 @@ def upgrade() -> None:
         sa.Column("code", sa.String(50), nullable=False, unique=True),
         sa.Column("name", sa.String(100), nullable=False),
         sa.Column("is_builtin", sa.Boolean, nullable=False, server_default=sa.text("false")),
-        sa.Column(
-            "is_superadmin", sa.Boolean, nullable=False, server_default=sa.text("false")
-        ),
+        sa.Column("is_superadmin", sa.Boolean, nullable=False, server_default=sa.text("false")),
         sa.Column(
             "created_at",
             sa.DateTime(timezone=True),
@@ -269,7 +267,9 @@ def _seed_roles(conn, perm_ids: dict[str, uuid.UUID]) -> None:
     for _code, pid in perm_ids.items():
         conn.execute(
             role_perm_table.insert().values(
-                role_id=admin_id, permission_id=pid, scope="global",
+                role_id=admin_id,
+                permission_id=pid,
+                scope="global",
             )
         )
 
@@ -316,21 +316,30 @@ def _seed_root_dept_and_admin(conn) -> None:
 
     root_name = os.environ.get("SEED_ROOT_DEPT_NAME", "Root")
     root_id = uuid.uuid4()
-    conn.execute(departments_table.insert().values(
-        id=root_id, parent_id=None, name=root_name,
-        path=f"/{root_id}", depth=0, is_active=True,
-    ))
+    conn.execute(
+        departments_table.insert().values(
+            id=root_id,
+            parent_id=None,
+            name=root_name,
+            path=f"/{root_id}",
+            depth=0,
+            is_active=True,
+        )
+    )
 
     # Promote admin@example.com → superadmin and assign to root dept (if user exists)
-    conn.execute(sa.text(
-        """
+    conn.execute(
+        sa.text(
+            """
         INSERT INTO user_roles (user_id, role_id, granted_at)
         SELECT u.id, r.id, now()
         FROM users u, roles r
         WHERE u.email = 'admin@example.com' AND r.code = 'superadmin'
         ON CONFLICT DO NOTHING
         """
-    ))
-    conn.execute(sa.text(
-        "UPDATE users SET department_id = :dept WHERE email = 'admin@example.com'"
-    ), {"dept": root_id})
+        )
+    )
+    conn.execute(
+        sa.text("UPDATE users SET department_id = :dept WHERE email = 'admin@example.com'"),
+        {"dept": root_id},
+    )
