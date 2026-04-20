@@ -123,8 +123,7 @@ async def test_load_in_scope_returns_row_when_found(db_session: AsyncSession):
 @pytest.mark.asyncio
 async def test_load_in_scope_404_when_out_of_scope(db_session: AsyncSession):
     """User with no permission for user:read on another user -> 404."""
-    from fastapi import HTTPException
-
+    from app.core.errors import ProblemDetails
     from app.core.permissions import load_in_scope
 
     me = User(
@@ -146,6 +145,7 @@ async def test_load_in_scope_404_when_out_of_scope(db_session: AsyncSession):
 
     # Me has no roles -> perms is {}, no user:read key. apply_scope returns WHERE false.
     perms: dict[str, object] = {}
-    with pytest.raises(HTTPException) as exc_info:
+    with pytest.raises(ProblemDetails) as exc_info:
         await load_in_scope(db_session, User, other.id, me, "user:read", perms)
-    assert exc_info.value.status_code == 404
+    assert exc_info.value.status == 404
+    assert exc_info.value.code == "resource.not-found"

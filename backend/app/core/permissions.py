@@ -2,12 +2,13 @@ from __future__ import annotations
 
 from typing import Annotated
 
-from fastapi import Depends, Header, HTTPException, Request, status
+from fastapi import Depends, Header, Request
 from sqlalchemy import Select, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.auth import get_current_user
 from app.core.database import get_session
+from app.core.errors import ProblemDetails
 from app.modules.auth.models import User
 from app.modules.rbac.constants import SUPERADMIN_ALL, ScopeEnum, widest
 from app.modules.rbac.models import Department, Permission, Role, RolePermission, UserRole
@@ -93,9 +94,10 @@ def require_perm(code: str):
             return
         assert isinstance(perms, dict)
         if code not in perms:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail={"type": "permission_denied", "missing": code},
+            raise ProblemDetails(
+                code="permission.denied",
+                status=403,
+                detail=f"Permission '{code}' required.",
             )
 
     return _dep
@@ -155,5 +157,9 @@ async def load_in_scope(
     result = await db.execute(stmt)
     row = result.scalar_one_or_none()
     if row is None:
-        raise HTTPException(status_code=404, detail={"type": "not_found"})
+        raise ProblemDetails(
+            code="resource.not-found",
+            status=404,
+            detail="Resource not found or not in scope.",
+        )
     return row
