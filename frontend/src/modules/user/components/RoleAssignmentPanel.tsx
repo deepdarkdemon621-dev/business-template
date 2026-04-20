@@ -18,15 +18,16 @@ export function RoleAssignmentPanel({
   const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
+    let active = true;
     void listRoles().then((rs) => {
+      if (!active) return;
       setAvailable(rs);
       setLoaded(true);
     });
+    return () => {
+      active = false;
+    };
   }, []);
-
-  useEffect(() => {
-    setSelected(new Set(initialRoleIds));
-  }, [initialRoleIds]);
 
   function toggle(roleId: string) {
     const next = new Set(selected);

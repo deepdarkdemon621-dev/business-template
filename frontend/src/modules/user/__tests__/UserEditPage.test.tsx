@@ -1,7 +1,7 @@
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@/modules/user/api", () => ({
   createUser: vi.fn(),
@@ -20,6 +20,10 @@ import {
   updateUser,
 } from "@/modules/user/api";
 import { UserEditPage } from "@/modules/user/UserEditPage";
+
+beforeEach(() => {
+  vi.clearAllMocks();
+});
 
 describe("UserEditPage create mode", () => {
   it("submits a valid payload and navigates on success", async () => {
