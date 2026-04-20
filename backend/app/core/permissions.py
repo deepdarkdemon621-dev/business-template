@@ -18,6 +18,7 @@ __all__ = [
     "load_permissions",
     "require_perm",
     "apply_scope",
+    "load_in_scope",
 ]
 
 PermissionMap = dict[str, ScopeEnum] | object
@@ -124,3 +125,24 @@ def apply_scope(
         )
         return stmt.where(field.in_(subtree))
     raise RuntimeError(f"Unknown scope: {scope}")
+
+
+async def load_in_scope(
+    db: AsyncSession,
+    model: type,
+    row_id,
+    user: User,
+    code: str,
+    perms: PermissionMap,
+):
+    """Fetch row by id, enforcing scope.
+
+    Raises 404 (not 403) on out-of-scope to avoid leaking existence.
+    """
+    stmt = select(model).where(model.id == row_id)
+    stmt = apply_scope(stmt, user, code, model, perms)
+    result = await db.execute(stmt)
+    row = result.scalar_one_or_none()
+    if row is None:
+        raise HTTPException(status_code=404, detail={"type": "not_found"})
+    return row

@@ -91,3 +91,67 @@ async def test_apply_scope_global_no_filter(db_session: AsyncSession):
     stmt = sa_select(User)
     filtered = apply_scope(stmt, u, "user:list", User, perms)
     assert str(filtered.compile()) == str(stmt.compile())
+
+
+@pytest.mark.asyncio
+async def test_load_in_scope_returns_row_when_found(db_session: AsyncSession):
+    """Superadmin can load any user by id (no scope restriction)."""
+    from sqlalchemy import select as sa_select
+
+    from app.core.permissions import get_user_permissions, load_in_scope
+
+    admin = User(
+        id=uuid.uuid4(),
+        email="sa@example.com",
+        full_name="SA",
+        password_hash="x",
+        is_active=True,
+    )
+    target = User(
+        id=uuid.uuid4(),
+        email="t@example.com",
+        full_name="T",
+        password_hash="x",
+        is_active=True,
+    )
+    db_session.add_all([admin, target])
+    sr = (
+        await db_session.execute(sa_select(Role).where(Role.code == "superadmin"))
+    ).scalar_one()
+    db_session.add(UserRole(user_id=admin.id, role_id=sr.id))
+    await db_session.flush()
+
+    perms = await get_user_permissions(db_session, admin)
+    row = await load_in_scope(db_session, User, target.id, admin, "user:read", perms)
+    assert row.id == target.id
+
+
+@pytest.mark.asyncio
+async def test_load_in_scope_404_when_out_of_scope(db_session: AsyncSession):
+    """User with no permission for user:read on another user -> 404."""
+    from fastapi import HTTPException
+
+    from app.core.permissions import load_in_scope
+
+    me = User(
+        id=uuid.uuid4(),
+        email="me@example.com",
+        full_name="Me",
+        password_hash="x",
+        is_active=True,
+    )
+    other = User(
+        id=uuid.uuid4(),
+        email="o@example.com",
+        full_name="O",
+        password_hash="x",
+        is_active=True,
+    )
+    db_session.add_all([me, other])
+    await db_session.flush()
+
+    # Me has no roles -> perms is {}, no user:read key. apply_scope returns WHERE false.
+    perms: dict[str, object] = {}
+    with pytest.raises(HTTPException) as exc_info:
+        await load_in_scope(db_session, User, other.id, me, "user:read", perms)
+    assert exc_info.value.status_code == 404
