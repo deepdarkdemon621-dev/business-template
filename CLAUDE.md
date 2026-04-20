@@ -23,6 +23,7 @@ Read in this order when you start a session:
 | Auth / session / password | `06-auth-session.md` |
 | Permissions / data scope | `07-rbac.md` |
 | Directory / naming | `08-naming-and-layout.md` |
+| Form field consistency | `10-form-consistency.md` |
 | **Before claiming done** | `99-anti-laziness.md` |
 
 ## Hard rules (quick reference — details in convention docs)
