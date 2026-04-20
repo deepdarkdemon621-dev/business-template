@@ -1,3 +1,4 @@
+import contextlib
 import os
 import subprocess
 
@@ -25,10 +26,8 @@ def test_migration_round_trip_0003():
     try:
         run(["downgrade", "-1"])
         run(["upgrade", "head"])
-    except Exception:
+    except subprocess.CalledProcessError:
         # Restore to head before propagating, so later tests don't see partial state.
-        try:
+        with contextlib.suppress(subprocess.CalledProcessError):
             run(["upgrade", "head"])
-        except Exception:
-            pass
         raise
