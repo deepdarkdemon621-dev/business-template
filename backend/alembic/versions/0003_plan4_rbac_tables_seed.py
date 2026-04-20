@@ -7,6 +7,7 @@ Create Date: 2026-04-20
 
 from __future__ import annotations
 
+import os
 import uuid
 
 import sqlalchemy as sa
@@ -301,5 +302,33 @@ def _seed_roles(conn, perm_ids: dict[str, uuid.UUID]) -> None:
 
 
 def _seed_root_dept_and_admin(conn) -> None:
-    """Populated in C4."""
-    pass
+    departments_table = sa.table(
+        "departments",
+        sa.column("id", UUID(as_uuid=True)),
+        sa.column("parent_id", UUID(as_uuid=True)),
+        sa.column("name", sa.String),
+        sa.column("path", sa.String),
+        sa.column("depth", sa.Integer),
+        sa.column("is_active", sa.Boolean),
+    )
+
+    root_name = os.environ.get("SEED_ROOT_DEPT_NAME", "Root")
+    root_id = uuid.uuid4()
+    conn.execute(departments_table.insert().values(
+        id=root_id, parent_id=None, name=root_name,
+        path=f"/{root_id}", depth=0, is_active=True,
+    ))
+
+    # Promote admin@example.com → superadmin and assign to root dept (if user exists)
+    conn.execute(sa.text(
+        """
+        INSERT INTO user_roles (user_id, role_id, granted_at)
+        SELECT u.id, r.id, now()
+        FROM users u, roles r
+        WHERE u.email = 'admin@example.com' AND r.code = 'superadmin'
+        ON CONFLICT DO NOTHING
+        """
+    ))
+    conn.execute(sa.text(
+        "UPDATE users SET department_id = :dept WHERE email = 'admin@example.com'"
+    ), {"dept": root_id})

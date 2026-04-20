@@ -70,3 +70,27 @@ async def test_seed_roles(db_session: AsyncSession):
         )
     )
     assert result.scalar() == 7
+
+
+@pytest.mark.asyncio
+async def test_seed_root_department_and_admin_promotion(db_session: AsyncSession):
+    from app.modules.auth.models import User
+    from app.modules.rbac.models import Department, Role, UserRole
+
+    result = await db_session.execute(select(Department).where(Department.depth == 0))
+    root = result.scalar_one()
+    assert root.parent_id is None
+
+    result = await db_session.execute(select(User).where(User.email == "admin@example.com"))
+    admin = result.scalars().first()
+    if admin is None:
+        pytest.skip("admin@example.com not seeded in Plan 3 scope of this test DB")
+    assert admin.department_id == root.id
+
+    result = await db_session.execute(
+        select(UserRole).join(Role).where(
+            UserRole.user_id == admin.id,
+            Role.code == "superadmin",
+        )
+    )
+    assert result.first() is not None
