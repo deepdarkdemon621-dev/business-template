@@ -1,5 +1,5 @@
 import pytest
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.modules.rbac.models import Department
@@ -34,3 +34,11 @@ async def test_role_is_superadmin_defaults_false(db_session: AsyncSession):
     await db_session.flush()
     assert r.is_superadmin is False
     assert r.is_builtin is False
+
+
+@pytest.mark.asyncio
+async def test_seed_inserts_15_permissions(db_session: AsyncSession):
+    from app.modules.rbac.models import Permission
+
+    result = await db_session.execute(select(func.count(Permission.id)))
+    assert result.scalar() == 15

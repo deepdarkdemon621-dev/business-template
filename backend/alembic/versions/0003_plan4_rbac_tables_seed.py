@@ -7,6 +7,8 @@ Create Date: 2026-04-20
 
 from __future__ import annotations
 
+import uuid
+
 import sqlalchemy as sa
 from sqlalchemy.dialects.postgresql import UUID
 
@@ -176,6 +178,57 @@ def downgrade() -> None:
     op.drop_table("departments")
 
 
+_PERMISSIONS = [
+    # (code, resource, action, description)
+    ("user:create", "user", "create", "Create a user"),
+    ("user:read", "user", "read", "Read a user"),
+    ("user:update", "user", "update", "Update a user"),
+    ("user:delete", "user", "delete", "Delete a user"),
+    ("user:list", "user", "list", "List users"),
+    ("role:read", "role", "read", "Read a role"),
+    ("role:list", "role", "list", "List roles"),
+    ("role:assign", "role", "assign", "Assign a role to a user"),
+    ("department:create", "department", "create", "Create a department"),
+    ("department:read", "department", "read", "Read a department"),
+    ("department:update", "department", "update", "Update a department"),
+    ("department:delete", "department", "delete", "Delete a department"),
+    ("department:list", "department", "list", "List departments"),
+    ("permission:read", "permission", "read", "Read a permission"),
+    ("permission:list", "permission", "list", "List permissions"),
+]
+
+
 def _seed(conn) -> None:
-    """Populated in tasks C2/C3/C4."""
+    permissions_table = sa.table(
+        "permissions",
+        sa.column("id", UUID(as_uuid=True)),
+        sa.column("code", sa.String),
+        sa.column("resource", sa.String),
+        sa.column("action", sa.String),
+        sa.column("description", sa.String),
+    )
+    perm_ids: dict[str, uuid.UUID] = {}
+    for code, resource, action, desc in _PERMISSIONS:
+        pid = uuid.uuid4()
+        perm_ids[code] = pid
+        conn.execute(
+            permissions_table.insert().values(
+                id=pid,
+                code=code,
+                resource=resource,
+                action=action,
+                description=desc,
+            )
+        )
+    _seed_roles(conn, perm_ids)
+    _seed_root_dept_and_admin(conn)
+
+
+def _seed_roles(conn, perm_ids: dict[str, uuid.UUID]) -> None:
+    """Populated in C3."""
+    pass
+
+
+def _seed_root_dept_and_admin(conn) -> None:
+    """Populated in C4."""
     pass
