@@ -8,7 +8,32 @@ app = typer.Typer(no_args_is_help=True)
 @app.command("list-roles")
 def list_roles() -> None:
     """List all roles and their permission grants."""
-    typer.echo("(stub — filled in G5)")
+    import asyncio
+
+    from sqlalchemy import select
+
+    from app.core.database import async_session
+    from app.modules.rbac.models import Permission, Role, RolePermission
+
+    async def _run() -> None:
+        async with async_session() as db:
+            roles = (await db.execute(select(Role).order_by(Role.code))).scalars().all()
+            for role in roles:
+                marker = " (superadmin)" if role.is_superadmin else ""
+                typer.echo(f"Role: {role.code}{marker}")
+                if role.is_superadmin:
+                    typer.echo("  (bypasses all permission checks)")
+                    continue
+                grants_q = await db.execute(
+                    select(Permission.code, RolePermission.scope)
+                    .join(RolePermission, RolePermission.permission_id == Permission.id)
+                    .where(RolePermission.role_id == role.id)
+                    .order_by(Permission.code)
+                )
+                for code, scope in grants_q:
+                    typer.echo(f"  {code} @ {scope}")
+
+    asyncio.run(_run())
 
 
 @app.command("grant-role")
@@ -24,9 +49,7 @@ def grant_role(email: str, role_code: str) -> None:
 
     async def _run() -> None:
         async with async_session() as db:
-            user = (
-                await db.execute(select(User).where(User.email == email))
-            ).scalar_one_or_none()
+            user = (await db.execute(select(User).where(User.email == email))).scalar_one_or_none()
             if user is None:
                 typer.echo(f"User not found: {email}", err=True)
                 raise typer.Exit(code=1)
@@ -54,9 +77,7 @@ def revoke_role(email: str, role_code: str) -> None:
 
     async def _run() -> None:
         async with async_session() as db:
-            user = (
-                await db.execute(select(User).where(User.email == email))
-            ).scalar_one_or_none()
+            user = (await db.execute(select(User).where(User.email == email))).scalar_one_or_none()
             if user is None:
                 typer.echo(f"User not found: {email}", err=True)
                 raise typer.Exit(code=1)
@@ -85,9 +106,7 @@ def list_user(email: str) -> None:
 
     async def _run() -> None:
         async with async_session() as db:
-            user = (
-                await db.execute(select(User).where(User.email == email))
-            ).scalar_one_or_none()
+            user = (await db.execute(select(User).where(User.email == email))).scalar_one_or_none()
             if user is None:
                 typer.echo(f"User not found: {email}", err=True)
                 raise typer.Exit(code=1)
