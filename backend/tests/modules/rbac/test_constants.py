@@ -11,3 +11,10 @@ def test_widest_returns_highest_priority():
     assert widest(ScopeEnum.OWN, ScopeEnum.DEPT_TREE) == ScopeEnum.DEPT_TREE
     assert widest(ScopeEnum.GLOBAL, ScopeEnum.DEPT) == ScopeEnum.GLOBAL
     assert widest(ScopeEnum.OWN, ScopeEnum.OWN) == ScopeEnum.OWN
+
+
+def test_action_enum_includes_move() -> None:
+    from app.modules.rbac.constants import ActionEnum
+
+    assert ActionEnum.MOVE == "move"
+    assert "move" in {a.value for a in ActionEnum}

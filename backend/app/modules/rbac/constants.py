@@ -22,6 +22,7 @@ class ActionEnum(StrEnum):
     PUBLISH = "publish"
     INVOKE = "invoke"
     ASSIGN = "assign"
+    MOVE = "move"
 
 
 _SCOPE_PRIORITY: dict[ScopeEnum, int] = {
