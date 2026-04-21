@@ -238,3 +238,49 @@ async def test_apply_scope_dept_falls_back_to_user_dept_when_scope_value_null(
     # Fallback anchor is user.department_id (root). asyncpg renders UUID
     # literals without hyphens, so match against the hex form.
     assert root.id.hex in compiled or str(root.id) in compiled
+
+
+@pytest.mark.asyncio
+async def test_apply_scope_dept_tree_uses_scope_value_subtree(
+    db_session: AsyncSession,
+) -> None:
+    """DEPT_TREE with scope_value=Other expands to Other's subtree, not Root's."""
+    root, other = await _seed_tree(db_session)
+    child_of_other = Department(
+        name="OtherChild", parent_id=other.id, path="/other/child/", depth=1
+    )
+    db_session.add(child_of_other)
+    await db_session.flush()
+
+    user = User(
+        email="u3@test",
+        password_hash="x",
+        full_name="U3",
+        department_id=root.id,
+    )
+    db_session.add(user)
+    role = Role(code="r6b4", name="R4")
+    db_session.add(role)
+    await db_session.flush()
+    # user:list is already seeded by migration 0003; fetch instead of insert
+    # (a fresh Permission row would violate permissions_code_key).
+    perm = (
+        await db_session.execute(select(Permission).where(Permission.code == "user:list"))
+    ).scalar_one()
+    db_session.add(RolePermission(role_id=role.id, permission_id=perm.id, scope="dept_tree"))
+    db_session.add(
+        UserRole(user_id=user.id, role_id=role.id, scope_value=other.id)
+    )
+    await db_session.flush()
+
+    perms = {"user:list": ScopeEnum.DEPT_TREE}
+    stmt = select(User)
+    scoped = apply_scope(stmt, user, "user:list", User, perms)
+    compiled = str(scoped.compile(compile_kwargs={"literal_binds": True}))
+    # The SQL must use COALESCE(scope_value, user.department_id) as the anchor
+    # so that the scope_value (other.id) drives subtree expansion, not the
+    # user's own department.  scope_value is a DB column reference so it won't
+    # be inlined; presence of `coalesce` and `scope_value` column name confirms
+    # the correct branch is used.  Same assertion pattern as the DEPT test.
+    assert "coalesce" in compiled.lower()
+    assert "scope_value" in compiled

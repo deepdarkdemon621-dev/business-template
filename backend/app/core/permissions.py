@@ -140,12 +140,29 @@ def apply_scope(
         )
         return stmt.where(field.in_(dept_ids))
     if scope == ScopeEnum.DEPT_TREE:
-        # SQL-level: find user's dept path, then select all dept ids whose path
-        # starts with user_path, then filter rows by that subtree.
-        user_path = (
-            select(Department.path).where(Department.id == user.department_id).scalar_subquery()
+        # For each role/permission granting this code at dept_tree scope,
+        # expand the anchor dept (scope_value or user.department_id) to its
+        # subtree via Department.path LIKE prefix.
+        anchor_ids = (
+            select(func.coalesce(UserRole.scope_value, user.department_id).label("anchor"))
+            .join(RolePermission, RolePermission.role_id == UserRole.role_id)
+            .join(Permission, Permission.id == RolePermission.permission_id)
+            .where(UserRole.user_id == user.id)
+            .where(Permission.code == code)
+            .where(RolePermission.scope == ScopeEnum.DEPT_TREE.value)
+        ).subquery("anchor")
+        anchor_paths = (
+            select(Department.path)
+            .where(Department.id.in_(select(anchor_ids.c.anchor)))
+            .subquery("anchor_paths")
         )
-        subtree = select(Department.id).where(Department.path.like(func.concat(user_path, "%")))
+        subtree = (
+            select(Department.id)
+            .join(
+                anchor_paths,
+                Department.path.like(func.concat(anchor_paths.c.path, "%")),
+            )
+        )
         return stmt.where(field.in_(subtree))
     raise RuntimeError(f"Unknown scope: {scope}")
 
