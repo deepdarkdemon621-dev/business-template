@@ -108,3 +108,13 @@ def test_permission_check_constraint_allows_move() -> None:
         if hasattr(c, "name") and c.name == "ck_permissions_action"
     )
     assert "'move'" in str(check.sqltext)
+
+
+def test_user_role_has_scope_value_column() -> None:
+    from app.modules.rbac.models import UserRole
+
+    col = UserRole.__table__.c.scope_value
+    assert col.nullable is True
+    fks = list(col.foreign_keys)
+    assert len(fks) == 1
+    assert fks[0].column.table.name == "departments"

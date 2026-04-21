@@ -146,3 +146,8 @@ class UserRole(Base):
     granted_by: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True), ForeignKey("users.id"), nullable=True
     )
+    scope_value: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("departments.id", ondelete="SET NULL"),
+        nullable=True,
+    )
