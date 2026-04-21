@@ -128,7 +128,17 @@ def apply_scope(
     if scope == ScopeEnum.OWN:
         return stmt.where(field == user.id)
     if scope == ScopeEnum.DEPT:
-        return stmt.where(field == user.department_id)
+        # Union of per-assignment scope_values (or user.department_id fallback)
+        # for every role this user holds that grants `code` at DEPT scope.
+        dept_ids = (
+            select(func.coalesce(UserRole.scope_value, user.department_id))
+            .join(RolePermission, RolePermission.role_id == UserRole.role_id)
+            .join(Permission, Permission.id == RolePermission.permission_id)
+            .where(UserRole.user_id == user.id)
+            .where(Permission.code == code)
+            .where(RolePermission.scope == ScopeEnum.DEPT.value)
+        )
+        return stmt.where(field.in_(dept_ids))
     if scope == ScopeEnum.DEPT_TREE:
         # SQL-level: find user's dept path, then select all dept ids whose path
         # starts with user_path, then filter rows by that subtree.

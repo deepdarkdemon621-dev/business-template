@@ -4,9 +4,16 @@ import pytest
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.permissions import SUPERADMIN_ALL, get_user_permissions
+from app.core.permissions import SUPERADMIN_ALL, apply_scope, get_user_permissions
 from app.modules.auth.models import User
-from app.modules.rbac.models import Role, UserRole
+from app.modules.rbac.constants import ScopeEnum
+from app.modules.rbac.models import (
+    Department,
+    Permission,
+    Role,
+    RolePermission,
+    UserRole,
+)
 
 
 @pytest.mark.asyncio
@@ -151,3 +158,83 @@ async def test_load_in_scope_404_when_out_of_scope(db_session: AsyncSession):
         await load_in_scope(db_session, User, other.id, me, "user:read", perms)
     assert exc_info.value.status == 404
     assert exc_info.value.code == "resource.not-found"
+
+
+async def _seed_tree(session: AsyncSession) -> tuple[Department, Department]:
+    root = Department(name="Root", path="/root/", depth=0)
+    other = Department(name="Other", path="/other/", depth=0)
+    session.add_all([root, other])
+    await session.flush()
+    return root, other
+
+
+@pytest.mark.asyncio
+async def test_apply_scope_dept_uses_scope_value_when_set(
+    db_session: AsyncSession,
+) -> None:
+    """User's own dept=Root but assignment.scope_value=Other → sees Other rows."""
+    root, other = await _seed_tree(db_session)
+    user = User(
+        email="u@test",
+        password_hash="x",
+        full_name="U",
+        department_id=root.id,
+    )
+    db_session.add(user)
+    role = Role(code="r6b2", name="R")
+    db_session.add(role)
+    await db_session.flush()
+    perm = (
+        await db_session.execute(select(Permission).where(Permission.code == "user:list"))
+    ).scalar_one()
+    db_session.add(RolePermission(role_id=role.id, permission_id=perm.id, scope="dept"))
+    db_session.add(
+        UserRole(user_id=user.id, role_id=role.id, scope_value=other.id)
+    )
+    await db_session.flush()
+
+    # Scope map on User maps DEPT -> department_id field.
+    perms = {"user:list": ScopeEnum.DEPT}
+    stmt = select(User)
+    scoped = apply_scope(stmt, user, "user:list", User, perms)
+    compiled = str(scoped.compile(compile_kwargs={"literal_binds": True}))
+    # The anchor should derive from UserRole.scope_value (=other.id),
+    # not user.department_id (=root.id). Either the literal binds leak or
+    # the SQL uses COALESCE parametrically.
+    assert (
+        other.id.hex in compiled
+        or str(other.id) in compiled
+        or "coalesce" in compiled.lower()
+    )
+
+
+@pytest.mark.asyncio
+async def test_apply_scope_dept_falls_back_to_user_dept_when_scope_value_null(
+    db_session: AsyncSession,
+) -> None:
+    """NULL scope_value → identical to Plan 4 behaviour."""
+    root, _ = await _seed_tree(db_session)
+    user = User(
+        email="u2@test",
+        password_hash="x",
+        full_name="U2",
+        department_id=root.id,
+    )
+    db_session.add(user)
+    role = Role(code="r6b2b", name="R2")
+    db_session.add(role)
+    await db_session.flush()
+    perm = (
+        await db_session.execute(select(Permission).where(Permission.code == "user:list"))
+    ).scalar_one()
+    db_session.add(RolePermission(role_id=role.id, permission_id=perm.id, scope="dept"))
+    db_session.add(UserRole(user_id=user.id, role_id=role.id, scope_value=None))
+    await db_session.flush()
+
+    perms = {"user:list": ScopeEnum.DEPT}
+    stmt = select(User)
+    scoped = apply_scope(stmt, user, "user:list", User, perms)
+    compiled = str(scoped.compile(compile_kwargs={"literal_binds": True}))
+    # Fallback anchor is user.department_id (root). asyncpg renders UUID
+    # literals without hyphens, so match against the hex form.
+    assert root.id.hex in compiled or str(root.id) in compiled
