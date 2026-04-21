@@ -72,3 +72,85 @@ async def test_admin_role_granted_dept_permissions(db_session: AsyncSession) -> 
     assert grants.get("department:update") == "global"
     assert grants.get("department:delete") == "global"
     assert grants.get("department:move") == "global"
+
+
+async def test_downgrade_reverses_migration(db_session: AsyncSession) -> None:
+    """Verify downgrade correctly reverses the 0005 migration.
+
+    The session-scoped `_prepare_test_db` fixture has already run
+    `alembic upgrade head` at session start. This test downgrades to
+    0004 and verifies that all 0005 changes are reversed, while preserving
+    the 5 department perms seeded by 0003 (create/read/update/delete/list).
+    Then re-upgrades to head so later tests see the correct state.
+
+    Uses subprocess because `alembic/env.py` calls `asyncio.run()` which
+    conflicts with pytest-asyncio's running event loop.
+    """
+    import contextlib
+    import os
+    import subprocess
+
+    def run(args):
+        subprocess.run(
+            ["uv", "run", "alembic"] + args,
+            check=True,
+            env={**os.environ},
+            cwd="/app",
+        )
+
+    try:
+        # Downgrade to 0004
+        run(["downgrade", "-1"])
+
+        # Verify 0005 changes are reversed using the sync connection from db_session
+        def _check_downgrade(sync_conn):
+            insp = inspect(sync_conn)
+
+            # 1. scope_value column must NOT exist
+            cols = {c["name"]: c for c in insp.get_columns("user_roles")}
+            assert "scope_value" not in cols, "scope_value column should not exist after downgrade"
+
+            # 2. department:move permission must NOT exist
+            result = sync_conn.execute(
+                text("SELECT code FROM permissions WHERE code = 'department:move'")
+            )
+            assert result.first() is None, "department:move permission should not exist after downgrade"
+
+            # 3. Other 4 department perms (from 0003) must STILL exist
+            result = sync_conn.execute(
+                text(
+                    "SELECT code FROM permissions "
+                    "WHERE code IN ('department:create', 'department:read', "
+                    "'department:update', 'department:delete') "
+                    "ORDER BY code"
+                )
+            )
+            codes = [r[0] for r in result]
+            assert len(codes) == 4, f"Expected 4 department perms from 0003, got {codes}"
+            assert "department:create" in codes
+            assert "department:read" in codes
+            assert "department:update" in codes
+            assert "department:delete" in codes
+
+            # 4. ACTION CHECK should NOT contain 'move'
+            result = sync_conn.execute(
+                text(
+                    "SELECT pg_get_constraintdef(c.oid) FROM pg_constraint c "
+                    "JOIN pg_class t ON t.oid = c.conrelid "
+                    "WHERE t.relname = 'permissions' AND c.conname = 'ck_permissions_action'"
+                )
+            )
+            row = result.first()
+            assert row is not None
+            assert "'move'" not in row[0], "ck_permissions_action should not contain 'move' after downgrade"
+
+        await db_session.run_sync(lambda s: _check_downgrade(s.connection()))
+
+        # Re-upgrade to head for consistency
+        run(["upgrade", "head"])
+
+    except subprocess.CalledProcessError:
+        # Restore to head before propagating so later tests don't see partial state
+        with contextlib.suppress(subprocess.CalledProcessError):
+            run(["upgrade", "head"])
+        raise

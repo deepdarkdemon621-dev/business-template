@@ -38,12 +38,12 @@ _NEW_ACTIONS = (
 
 _OLD_ACTIONS = _NEW_ACTIONS[:-1]  # without 'move'
 
-# 4 of these 5 perms are already seeded by migration 0003 (create/read/update/
-# delete) and granted to admin at global scope. Only 'department:move' is new
-# here. We still include the other 4 in the seed/grant statements (using
-# ON CONFLICT DO NOTHING) so the migration is self-contained and idempotent:
-# if a future migration re-seeds the perms table, this one still converges on
-# the expected end state.
+# Note on scope: migration 0003 seeds 5 `department:*` permissions
+# (create/read/update/delete/list). This migration adds a 6th (`move`) and uses
+# ON CONFLICT (code) DO NOTHING on create/read/update/delete for self-containment
+# — intentionally omitting `list` per Plan 6 scope addendum 1 ("department:list
+# left dormant"). The migration is idempotent: if a future migration re-seeds,
+# this one still converges on the expected end state.
 _DEPARTMENT_PERMS = (
     ("department:create", "create", "Create a department"),
     ("department:read", "read", "Read / list / tree view departments"),
