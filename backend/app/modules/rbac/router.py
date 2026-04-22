@@ -10,14 +10,13 @@ from app.core.database import get_session
 from app.core.pagination import Page, PageQuery, paginate
 from app.core.permissions import (
     SUPERADMIN_ALL,
-    apply_scope,
     current_user_dep,
     get_user_permissions,
     require_perm,
 )
 from app.modules.auth.models import User
-from app.modules.rbac.models import Department, Role
-from app.modules.rbac.schemas import DepartmentOut, MePermissionsOut, RoleOut
+from app.modules.rbac.models import Role
+from app.modules.rbac.schemas import MePermissionsOut, RoleOut
 
 router = APIRouter(tags=["rbac"])
 
@@ -34,30 +33,6 @@ async def get_my_permissions(
     return MePermissionsOut(
         is_superadmin=False,
         permissions={k: v.value for k, v in perms.items()},
-    )
-
-
-@router.get(
-    "/departments",
-    response_model=Page[DepartmentOut],
-    dependencies=[Depends(require_perm("department:list"))],
-)
-async def list_departments_endpoint(
-    pq: Annotated[PageQuery, Depends()],
-    user: User = Depends(current_user_dep),
-    db: AsyncSession = Depends(get_session),
-) -> Page[DepartmentOut]:
-    perms = await get_user_permissions(db, user)
-    stmt = select(Department).order_by(Department.depth, Department.name)
-    stmt = apply_scope(stmt, user, "department:list", Department, perms)
-    raw_page = await paginate(db, stmt, pq)
-    items = [DepartmentOut.model_validate(i, from_attributes=True) for i in raw_page.items]
-    return Page[DepartmentOut](
-        items=items,
-        total=raw_page.total,
-        page=raw_page.page,
-        size=raw_page.size,
-        has_next=raw_page.has_next,
     )
 
 

@@ -1,8 +1,8 @@
 import pytest
 from pydantic import ValidationError
 
+from app.modules.department.schemas import DepartmentOut
 from app.modules.rbac.schemas import (
-    DepartmentOut,
     GrantRoleIn,
     MePermissionsOut,
     PermissionOut,
