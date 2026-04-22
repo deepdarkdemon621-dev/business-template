@@ -28,3 +28,4 @@ Screenshots land in `out/` (one per step, plus `FAIL_*.png` on failure).
 ## Scripts
 
 - `plan5-smoke.mjs` — Admin user CRUD + role assignment + mustChangePassword flow + self-protection + soft-delete filter (14 steps)
+- `plan6-smoke.mjs` — Department tree CRUD: login → tree renders → create child + grandchild → rename → cycle-guard dialog → has-children delete block → delete leaf → toggle inactive filter → logout (12 steps)
