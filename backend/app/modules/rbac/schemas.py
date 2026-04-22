@@ -28,13 +28,10 @@ class RoleOut(BaseSchema):
     is_superadmin: bool
 
 
-class DepartmentOut(BaseSchema):
-    id: uuid.UUID
-    parent_id: uuid.UUID | None
-    name: str
-    path: str
-    depth: int
-    is_active: bool
+# DepartmentOut moved to modules/department/schemas.py — re-exported here
+# for Phase C ↔ D transition. Removed in Phase D4 once rbac/router.py stops
+# importing it.
+from app.modules.department.schemas import DepartmentOut  # noqa: F401, E402
 
 
 class MePermissionsOut(BaseSchema):
