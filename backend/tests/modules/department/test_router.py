@@ -21,9 +21,7 @@ async def test_tree_endpoint_returns_nested_children(
     assert all("children" in node for node in body)
 
 
-async def test_create_department(
-    admin_client: AsyncClient, seed_department_tree: dict
-) -> None:
+async def test_create_department(admin_client: AsyncClient, seed_department_tree: dict) -> None:
     root_id = seed_department_tree["root_id"]
     r = await admin_client.post(
         "/api/v1/departments", json={"name": "NewChild", "parentId": str(root_id)}
@@ -34,20 +32,14 @@ async def test_create_department(
     assert body["parentId"] == str(root_id)
 
 
-async def test_rename_department(
-    admin_client: AsyncClient, seed_department_tree: dict
-) -> None:
+async def test_rename_department(admin_client: AsyncClient, seed_department_tree: dict) -> None:
     leaf_id = seed_department_tree["leaf_id"]
-    r = await admin_client.patch(
-        f"/api/v1/departments/{leaf_id}", json={"name": "Renamed"}
-    )
+    r = await admin_client.patch(f"/api/v1/departments/{leaf_id}", json={"name": "Renamed"})
     assert r.status_code == 200, r.text
     assert r.json()["name"] == "Renamed"
 
 
-async def test_move_department(
-    admin_client: AsyncClient, seed_department_tree: dict
-) -> None:
+async def test_move_department(admin_client: AsyncClient, seed_department_tree: dict) -> None:
     leaf_id = seed_department_tree["leaf_id"]
     other_root_id = seed_department_tree["other_root_id"]
     r = await admin_client.post(
@@ -79,9 +71,7 @@ async def test_delete_department_with_children_rejected(
     assert r.json()["code"] == "department.has-children"
 
 
-async def test_delete_leaf_ok(
-    admin_client: AsyncClient, seed_department_tree: dict
-) -> None:
+async def test_delete_leaf_ok(admin_client: AsyncClient, seed_department_tree: dict) -> None:
     leaf_id = seed_department_tree["leaf_id"]
     r = await admin_client.delete(f"/api/v1/departments/{leaf_id}")
     assert r.status_code == 204, r.text

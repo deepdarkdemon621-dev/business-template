@@ -137,9 +137,7 @@ async def test_downgrade_reverses_migration() -> None:
                         )
                     )
                     codes = [r[0] for r in result]
-                    assert len(codes) == 4, (
-                        f"Expected 4 department perms from 0003, got {codes}"
-                    )
+                    assert len(codes) == 4, f"Expected 4 department perms from 0003, got {codes}"
                     assert "department:create" in codes
                     assert "department:read" in codes
                     assert "department:update" in codes

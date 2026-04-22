@@ -156,12 +156,9 @@ def apply_scope(
             .where(Department.id.in_(select(anchor_ids.c.anchor)))
             .subquery("anchor_paths")
         )
-        subtree = (
-            select(Department.id)
-            .join(
-                anchor_paths,
-                Department.path.like(func.concat(anchor_paths.c.path, "%")),
-            )
+        subtree = select(Department.id).join(
+            anchor_paths,
+            Department.path.like(func.concat(anchor_paths.c.path, "%")),
         )
         return stmt.where(field.in_(subtree))
     raise RuntimeError(f"Unknown scope: {scope}")

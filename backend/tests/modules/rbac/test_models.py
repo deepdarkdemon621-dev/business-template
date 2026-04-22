@@ -104,7 +104,8 @@ def test_permission_check_constraint_allows_move() -> None:
     from app.modules.rbac.models import Permission
 
     check = next(
-        c for c in Permission.__table_args__
+        c
+        for c in Permission.__table_args__
         if hasattr(c, "name") and c.name == "ck_permissions_action"
     )
     assert "'move'" in str(check.sqltext)

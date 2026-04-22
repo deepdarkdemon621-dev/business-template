@@ -32,9 +32,7 @@ async def test_has_children_passes_when_only_inactive_children(
     parent = Department(name="P2", path="/p2/", depth=0)
     db_session.add(parent)
     await db_session.flush()
-    child = Department(
-        name="C2", parent_id=parent.id, path="/p2/c2/", depth=1, is_active=False
-    )
+    child = Department(name="C2", parent_id=parent.id, path="/p2/c2/", depth=1, is_active=False)
     db_session.add(child)
     await db_session.flush()
 
@@ -47,9 +45,7 @@ async def test_has_assigned_users_rejects_when_active_user_assigned(
     dept = Department(name="D", path="/d/", depth=0)
     db_session.add(dept)
     await db_session.flush()
-    u = User(
-        email="hu@test", password_hash="x", full_name="HU", department_id=dept.id
-    )
+    u = User(email="hu@test", password_hash="x", full_name="HU", department_id=dept.id)
     db_session.add(u)
     await db_session.flush()
 

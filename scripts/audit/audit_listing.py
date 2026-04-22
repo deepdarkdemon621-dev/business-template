@@ -28,6 +28,9 @@ def is_list_path(path: str) -> bool:
     if "{" in path:
         return False
     segments = [s for s in path.strip("/").split("/") if s]
+    # Tree endpoints are hierarchical by nature — not paginated.
+    if segments and segments[-1] == "tree":
+        return False
     if segments and segments[0] == "me" and len(segments) <= 2:
         return len(segments) == 2 and segments[1] not in {"profile", "permissions"}
     return True

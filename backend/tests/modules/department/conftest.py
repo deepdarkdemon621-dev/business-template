@@ -13,17 +13,13 @@ from app.modules.rbac.models import Department, Role, UserRole
 
 
 async def _login(client: AsyncClient, email: str, password: str) -> str:
-    resp = await client.post(
-        "/api/v1/auth/login", json={"email": email, "password": password}
-    )
+    resp = await client.post("/api/v1/auth/login", json={"email": email, "password": password})
     assert resp.status_code == 200, resp.text
     return resp.json()["accessToken"]
 
 
 @pytest_asyncio.fixture
-async def admin_client(
-    client_with_db: AsyncClient, db_session: AsyncSession
-) -> AsyncClient:
+async def admin_client(client_with_db: AsyncClient, db_session: AsyncSession) -> AsyncClient:
     """AsyncClient authenticated as a superadmin; bypasses every permission."""
     user = User(
         email="admin_dept@ex.com",
@@ -33,9 +29,7 @@ async def admin_client(
     )
     db_session.add(user)
     await db_session.flush()
-    sa_role = (
-        await db_session.execute(select(Role).where(Role.code == "superadmin"))
-    ).scalar_one()
+    sa_role = (await db_session.execute(select(Role).where(Role.code == "superadmin"))).scalar_one()
     db_session.add(UserRole(user_id=user.id, role_id=sa_role.id))
     await db_session.commit()
 
@@ -50,9 +44,7 @@ async def seed_department_tree(db_session: AsyncSession) -> dict[str, uuid.UUID]
     other_root = Department(name="Other", path="/other/", depth=0)
     db_session.add_all([root, other_root])
     await db_session.flush()
-    leaf = Department(
-        name="Leaf", parent_id=root.id, path="/root/leaf/", depth=1
-    )
+    leaf = Department(name="Leaf", parent_id=root.id, path="/root/leaf/", depth=1)
     db_session.add(leaf)
     await db_session.commit()
     return {

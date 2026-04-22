@@ -30,9 +30,7 @@ async def get_department(session: AsyncSession, dept_id: uuid.UUID) -> Departmen
     return await session.get(Department, dept_id)
 
 
-async def create_department(
-    session: AsyncSession, payload: DepartmentCreateIn
-) -> Department:
+async def create_department(session: AsyncSession, payload: DepartmentCreateIn) -> Department:
     parent = await session.get(Department, payload.parent_id)
     if parent is None:
         raise ProblemDetails(

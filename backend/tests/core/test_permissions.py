@@ -188,9 +188,7 @@ async def test_apply_scope_dept_uses_scope_value_when_set(
         await db_session.execute(select(Permission).where(Permission.code == "user:list"))
     ).scalar_one()
     db_session.add(RolePermission(role_id=role.id, permission_id=perm.id, scope="dept"))
-    db_session.add(
-        UserRole(user_id=user.id, role_id=role.id, scope_value=other.id)
-    )
+    db_session.add(UserRole(user_id=user.id, role_id=role.id, scope_value=other.id))
     await db_session.flush()
 
     # Scope map on User maps DEPT -> department_id field.
@@ -201,11 +199,7 @@ async def test_apply_scope_dept_uses_scope_value_when_set(
     # The anchor should derive from UserRole.scope_value (=other.id),
     # not user.department_id (=root.id). Either the literal binds leak or
     # the SQL uses COALESCE parametrically.
-    assert (
-        other.id.hex in compiled
-        or str(other.id) in compiled
-        or "coalesce" in compiled.lower()
-    )
+    assert other.id.hex in compiled or str(other.id) in compiled or "coalesce" in compiled.lower()
 
 
 @pytest.mark.asyncio
@@ -268,9 +262,7 @@ async def test_apply_scope_dept_tree_uses_scope_value_subtree(
         await db_session.execute(select(Permission).where(Permission.code == "user:list"))
     ).scalar_one()
     db_session.add(RolePermission(role_id=role.id, permission_id=perm.id, scope="dept_tree"))
-    db_session.add(
-        UserRole(user_id=user.id, role_id=role.id, scope_value=other.id)
-    )
+    db_session.add(UserRole(user_id=user.id, role_id=role.id, scope_value=other.id))
     await db_session.flush()
 
     perms = {"user:list": ScopeEnum.DEPT_TREE}
