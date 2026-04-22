@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Tree } from "@/components/ui/tree";
 import { problemMessage } from "@/lib/problem-details";
 import { getDepartmentTree, softDeleteDepartment } from "./api";
@@ -49,10 +50,9 @@ export function DepartmentListPage() {
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-semibold">部门管理</h1>
         <label className="flex items-center gap-2 text-sm">
-          <input
-            type="checkbox"
+          <Checkbox
             checked={includeInactive}
-            onChange={(e) => setIncludeInactive(e.target.checked)}
+            onCheckedChange={(v) => setIncludeInactive(v === true)}
           />
           显示已停用
         </label>

@@ -21,7 +21,7 @@ from app.modules.auth.models import User
 from app.modules.department.crud import (
     build_list_flat_stmt,
     create_department,
-    get_tree_rooted_at,
+    list_scoped_tree_rows,
     soft_delete_department,
     update_department,
 )
@@ -97,7 +97,10 @@ async def tree_departments_endpoint(
     user: User = Depends(current_user_dep),
     db: AsyncSession = Depends(get_session),
 ) -> list[DepartmentNode]:
-    rows = await get_tree_rooted_at(db, include_inactive=include_inactive)
+    perms = await get_user_permissions(db, user)
+    rows = await list_scoped_tree_rows(
+        db, user=user, perms=perms, include_inactive=include_inactive
+    )
     return _build_tree(rows)
 
 
@@ -189,10 +192,8 @@ async def delete_department_endpoint(
     perms = await get_user_permissions(db, user)
     target = await load_in_scope(db, Department, dept_id, user, "department:delete", perms)
     try:
-        for guard in getattr(Department, "__guards__", {}).get("delete", []):
-            await guard.check(db, target, actor=user)
+        await soft_delete_department(db, target, actor=user)
     except GuardViolationError as e:
         raise _guard_to_problem(e) from e
-    await soft_delete_department(db, target, actor=user)
     await db.commit()
     return Response(status_code=204)

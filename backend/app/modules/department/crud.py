@@ -8,6 +8,7 @@ from sqlalchemy import Select, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.errors import ProblemDetails
+from app.modules.auth.models import User
 from app.modules.department.schemas import DepartmentCreateIn, DepartmentUpdateIn
 from app.modules.rbac.models import Department
 
@@ -67,9 +68,47 @@ async def update_department(
 async def soft_delete_department(
     session: AsyncSession, target: Department, *, actor: Any | None
 ) -> None:
-    # Guards dispatched by the service layer.
+    # Run delete-phase guards before mutating — HasChildren / HasAssignedUsers
+    # may raise GuardViolationError which the router translates to 409.
+    for guard in getattr(Department, "__guards__", {}).get("delete", []):
+        await guard.check(session, target, actor=actor)
     target.is_active = False
     await session.flush()
+
+
+def build_tree_stmt(
+    *,
+    root_path: str | None = None,
+    include_inactive: bool = False,
+) -> Select[tuple[Department]]:
+    stmt = select(Department).order_by(Department.depth, Department.name)
+    if not include_inactive:
+        stmt = stmt.where(Department.is_active.is_(True))
+    if root_path is not None:
+        stmt = stmt.where(Department.path.like(f"{root_path}%"))
+    return stmt
+
+
+async def list_scoped_tree_rows(
+    session: AsyncSession,
+    *,
+    user: User,
+    perms: Any,
+    include_inactive: bool = False,
+) -> list[Department]:
+    """Return all Department rows visible to `user` under permission
+    `department:read`, ordered depth-first ready for in-memory tree assembly.
+
+    Scoping goes through `apply_scope` so global / dept_tree / dept permissions
+    collapse to the correct subset.  Lazy import of `apply_scope` avoids a
+    circular import (core.permissions → modules.rbac.models → department.crud).
+    """
+    from app.core.permissions import apply_scope
+
+    stmt = build_tree_stmt(include_inactive=include_inactive)
+    stmt = apply_scope(stmt, user, "department:read", Department, perms)
+    result = await session.execute(stmt)
+    return list(result.scalars().all())
 
 
 async def get_tree_rooted_at(
@@ -80,14 +119,16 @@ async def get_tree_rooted_at(
 ) -> list[Department]:
     """Return every department in the subtree rooted at `root_id` (or the whole
     forest if `root_id` is None), ordered by depth then name.
+
+    Does NOT apply permission scoping — callers must compose `apply_scope`
+    on the returned statement via `build_tree_stmt` if scope matters.
     """
-    stmt = select(Department).order_by(Department.depth, Department.name)
-    if not include_inactive:
-        stmt = stmt.where(Department.is_active.is_(True))
+    root_path: str | None = None
     if root_id is not None:
         root = await session.get(Department, root_id)
         if root is None:
             return []
-        stmt = stmt.where(Department.path.like(f"{root.path}%"))
+        root_path = root.path
+    stmt = build_tree_stmt(root_path=root_path, include_inactive=include_inactive)
     rows = (await session.execute(stmt)).scalars().all()
     return list(rows)
