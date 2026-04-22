@@ -131,20 +131,20 @@ Expected: `Running upgrade 0005_plan6_dept_scope_value -> 0006_plan7_role_crud_p
 
 Run:
 ```bash
-docker compose exec postgres psql -U postgres -d appdb -c "SELECT code FROM permissions WHERE resource='role' AND action IN ('create','update','delete');"
+docker compose exec db psql -U postgres -d business_template -c "SELECT code FROM permissions WHERE resource='role' AND action IN ('create','update','delete');"
 ```
 Expected: three rows — `role:create`, `role:update`, `role:delete`.
 
 Run:
 ```bash
-docker compose exec postgres psql -U postgres -d appdb -c "SELECT p.code, rp.scope FROM role_permissions rp JOIN roles r ON r.id=rp.role_id JOIN permissions p ON p.id=rp.permission_id WHERE r.code='admin' AND p.resource='role';"
+docker compose exec db psql -U postgres -d business_template -c "SELECT p.code, rp.scope FROM role_permissions rp JOIN roles r ON r.id=rp.role_id JOIN permissions p ON p.id=rp.permission_id WHERE r.code='admin' AND p.resource='role';"
 ```
 Expected: 5 rows — existing `role:list`, `role:read`, `role:assign` at global + new `role:create`, `role:update`, `role:delete` at global.
 
 - [ ] **Step 5: Test downgrade**
 
 Run: `docker compose exec backend uv run alembic downgrade -1`
-Then verify rows gone: `docker compose exec postgres psql -U postgres -d appdb -c "SELECT code FROM permissions WHERE code IN ('role:create','role:update','role:delete');"`
+Then verify rows gone: `docker compose exec db psql -U postgres -d business_template -c "SELECT code FROM permissions WHERE code IN ('role:create','role:update','role:delete');"`
 Expected: 0 rows.
 Re-apply: `docker compose exec backend uv run alembic upgrade head`.
 
