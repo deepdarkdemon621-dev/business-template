@@ -151,3 +151,8 @@ class UserRole(Base):
         ForeignKey("departments.id", ondelete="SET NULL"),
         nullable=True,
     )
+
+
+# Department.__guards__ is wired at the bottom of rbac/guards.py — see the note
+# there. Wiring from here would run mid-load of guards.py (which imports this
+# module at its top) and trigger a partial-import error.

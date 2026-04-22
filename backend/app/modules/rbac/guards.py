@@ -6,7 +6,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.guards import GuardViolationError
-from app.modules.rbac.models import Role, UserRole
+from app.modules.rbac.models import Department, Role, UserRole
 
 
 class LastOfKind:
@@ -45,3 +45,103 @@ class LastOfKind:
                 code="last-of-kind",
                 ctx={"role_code": self.role_code, "remaining": int(total)},
             )
+
+
+class HasChildren:
+    """Forbid delete when the department has any active children."""
+
+    async def check(
+        self,
+        session: AsyncSession,
+        instance: Any,
+        *,
+        actor: Any | None = None,
+        **_: Any,
+    ) -> None:
+        stmt = (
+            select(func.count())
+            .select_from(Department)
+            .where(Department.parent_id == instance.id)
+            .where(Department.is_active.is_(True))
+        )
+        count = (await session.execute(stmt)).scalar_one()
+        if count > 0:
+            raise GuardViolationError(
+                code="department.has-children",
+                ctx={"department_id": str(instance.id), "active_children": int(count)},
+            )
+
+
+class HasAssignedUsers:
+    """Forbid delete when any active user has this as their department_id."""
+
+    async def check(
+        self,
+        session: AsyncSession,
+        instance: Any,
+        *,
+        actor: Any | None = None,
+        **_: Any,
+    ) -> None:
+        # Import inside to avoid a models ↔ guards cycle at import time.
+        from app.modules.auth.models import User
+
+        stmt = (
+            select(func.count())
+            .select_from(User)
+            .where(User.department_id == instance.id)
+            .where(User.is_active.is_(True))
+        )
+        count = (await session.execute(stmt)).scalar_one()
+        if count > 0:
+            raise GuardViolationError(
+                code="department.has-users",
+                ctx={"department_id": str(instance.id), "assigned_users": int(count)},
+            )
+
+
+class NoCycle:
+    """Forbid move when `new_parent_id` is self or a descendant of instance."""
+
+    async def check(
+        self,
+        session: AsyncSession,
+        instance: Any,
+        *,
+        actor: Any | None = None,
+        new_parent_id: Any | None = None,
+        **_: Any,
+    ) -> None:
+        if new_parent_id is None:
+            return
+        if new_parent_id == instance.id:
+            raise GuardViolationError(
+                code="department.self-parent",
+                ctx={"department_id": str(instance.id)},
+            )
+        # Is new_parent_id inside the subtree of instance?
+        # Subtree members have path starting with instance.path.
+        target_path_stmt = select(Department.path).where(Department.id == new_parent_id)
+        target_path = (await session.execute(target_path_stmt)).scalar_one_or_none()
+        if target_path is None:
+            return  # parent not found — let service/load_in_scope handle.
+        if target_path.startswith(instance.path):
+            raise GuardViolationError(
+                code="department.cycle-detected",
+                ctx={
+                    "department_id": str(instance.id),
+                    "new_parent_id": str(new_parent_id),
+                },
+            )
+
+
+# Wire Department.__guards__ here (not at the bottom of rbac/models.py)
+# because models.py is imported mid-load by guards.py's top-level
+# `from app.modules.rbac.models import Department, ...`. At the bottom of
+# models.py, this file is still initialising and the guard classes below
+# do not yet exist, so a partial-import error fires. By the time we reach
+# this point, both modules are fully loaded.
+Department.__guards__ = {
+    "delete": [HasChildren(), HasAssignedUsers()],
+    "move": [NoCycle()],
+}
