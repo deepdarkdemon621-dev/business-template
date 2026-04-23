@@ -162,8 +162,8 @@ async def test_downgrade_reverses_migration() -> None:
             await async_engine.dispose()
 
     try:
-        # Downgrade to 0004
-        run(["downgrade", "-1"])
+        # Downgrade to 0004 (the down_revision of 0005)
+        run(["downgrade", "0004_plan5_user_assign_perm"])
         # Inspect via a dedicated async engine, then dispose it before
         # re-upgrading so the subprocess has a lock-free DB.
         await _inspect_downgrade_state()

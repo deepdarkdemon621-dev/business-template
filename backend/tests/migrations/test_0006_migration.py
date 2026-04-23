@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from sqlalchemy import inspect, text
+from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 # pytest-asyncio runs in Mode.AUTO (see pyproject), so async defs here are

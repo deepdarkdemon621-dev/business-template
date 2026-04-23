@@ -6,8 +6,8 @@ from app.modules.rbac.schemas import (
     GrantRoleIn,
     MePermissionsOut,
     PermissionOut,
-    RoleOut,
     RoleCreateIn,
+    RoleOut,
     RolePermissionItem,
     RoleUpdateIn,
 )

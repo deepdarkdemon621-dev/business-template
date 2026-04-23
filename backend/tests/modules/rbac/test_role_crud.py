@@ -11,7 +11,7 @@ from app.modules.rbac.crud import (
     get_role_with_permissions,
     list_roles_with_counts,
 )
-from app.modules.rbac.models import Role, RolePermission, UserRole
+from app.modules.rbac.models import Role, RolePermission
 from app.modules.rbac.schemas import RoleCreateIn, RolePermissionItem
 
 
