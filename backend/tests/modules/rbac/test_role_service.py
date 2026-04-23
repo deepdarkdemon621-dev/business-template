@@ -29,9 +29,7 @@ async def test_role_service_create_ok(db_session) -> None:
         RoleCreateIn(
             code="auditor",
             name="Auditor",
-            permissions=[
-                RolePermissionItem(permission_code="user:read", scope="global")
-            ],
+            permissions=[RolePermissionItem(permission_code="user:read", scope="global")],
         ),
     )
     await db_session.commit()
@@ -80,9 +78,7 @@ async def test_role_service_update_metadata_only(db_session) -> None:
     role = await svc.create(db_session, RoleCreateIn(code="u_meta", name="Old Name"))
     await db_session.commit()
 
-    updated = await svc.update(
-        db_session, role, RoleUpdateIn(name="New Name")
-    )
+    updated = await svc.update(db_session, role, RoleUpdateIn(name="New Name"))
     await db_session.commit()
     assert updated.name == "New Name"
     assert updated.code == "u_meta"
@@ -125,9 +121,7 @@ async def test_role_service_update_matrix_replaces_whole_set(db_session) -> None
 @pytest.mark.asyncio
 async def test_role_service_update_builtin_metadata_refused(db_session, seeded_rbac) -> None:
     svc = RoleService()
-    admin = (
-        await db_session.execute(select(Role).where(Role.code == "admin"))
-    ).scalar_one()
+    admin = (await db_session.execute(select(Role).where(Role.code == "admin"))).scalar_one()
 
     with pytest.raises(ProblemDetails) as exc:
         await svc.update(db_session, admin, RoleUpdateIn(name="Renamed Admin"))
@@ -137,19 +131,13 @@ async def test_role_service_update_builtin_metadata_refused(db_session, seeded_r
 @pytest.mark.asyncio
 async def test_role_service_update_builtin_matrix_allowed(db_session, seeded_rbac) -> None:
     svc = RoleService()
-    admin = (
-        await db_session.execute(select(Role).where(Role.code == "admin"))
-    ).scalar_one()
+    admin = (await db_session.execute(select(Role).where(Role.code == "admin"))).scalar_one()
 
     # Matrix-only PATCH on builtin must succeed.
     await svc.update(
         db_session,
         admin,
-        RoleUpdateIn(
-            permissions=[
-                RolePermissionItem(permission_code="user:read", scope="global")
-            ]
-        ),
+        RoleUpdateIn(permissions=[RolePermissionItem(permission_code="user:read", scope="global")]),
     )
     await db_session.commit()
     _, items = await crud.get_role_with_permissions(db_session, admin.id)
@@ -187,9 +175,7 @@ async def test_role_service_delete_non_builtin_ok(db_session) -> None:
 @pytest.mark.asyncio
 async def test_role_service_delete_builtin_refused(db_session, seeded_rbac) -> None:
     svc = RoleService()
-    admin = (
-        await db_session.execute(select(Role).where(Role.code == "admin"))
-    ).scalar_one()
+    admin = (await db_session.execute(select(Role).where(Role.code == "admin"))).scalar_one()
     with pytest.raises(ProblemDetails) as exc:
         await svc.delete(db_session, admin)
     assert exc.value.code == "role.builtin-locked"

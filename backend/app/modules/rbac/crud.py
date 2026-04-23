@@ -112,11 +112,7 @@ async def count_role_users(session: AsyncSession, role_id: uuid.UUID) -> int:
 
 
 async def count_role_permissions(session: AsyncSession, role_id: uuid.UUID) -> int:
-    stmt = (
-        select(func.count())
-        .select_from(RolePermission)
-        .where(RolePermission.role_id == role_id)
-    )
+    stmt = select(func.count()).select_from(RolePermission).where(RolePermission.role_id == role_id)
     return int((await session.execute(stmt)).scalar_one())
 
 
@@ -138,9 +134,7 @@ async def list_roles_with_counts(
     offset: int = 0,
 ) -> list[dict[str, Any]]:
     user_count_sub = (
-        select(UserRole.role_id, func.count().label("uc"))
-        .group_by(UserRole.role_id)
-        .subquery()
+        select(UserRole.role_id, func.count().label("uc")).group_by(UserRole.role_id).subquery()
     )
     perm_count_sub = (
         select(RolePermission.role_id, func.count().label("pc"))
@@ -186,17 +180,14 @@ async def replace_role_permissions(
 
     added = sorted(set(desired) - set(current))
     removed = sorted(set(current) - set(desired))
-    scope_changed = sorted(
-        c for c in (set(desired) & set(current)) if desired[c] != current[c][0]
-    )
+    scope_changed = sorted(c for c in (set(desired) & set(current)) if desired[c] != current[c][0])
 
     # Delete removed.
     for code in removed:
         _, pid = current[code]
         await session.execute(
             RolePermission.__table__.delete().where(
-                (RolePermission.role_id == role_id)
-                & (RolePermission.permission_id == pid)
+                (RolePermission.role_id == role_id) & (RolePermission.permission_id == pid)
             )
         )
 
@@ -205,10 +196,7 @@ async def replace_role_permissions(
         _, pid = current[code]
         await session.execute(
             RolePermission.__table__.update()
-            .where(
-                (RolePermission.role_id == role_id)
-                & (RolePermission.permission_id == pid)
-            )
+            .where((RolePermission.role_id == role_id) & (RolePermission.permission_id == pid))
             .values(scope=desired[code])
         )
 
@@ -219,5 +207,3 @@ async def replace_role_permissions(
 
     await session.flush()
     return {"added": added, "removed": removed, "scope_changed": scope_changed}
-
-

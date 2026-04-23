@@ -38,10 +38,10 @@ async def test_create_role_with_permissions(db_session) -> None:
     await db_session.commit()
 
     rps = (
-        await db_session.execute(
-            select(RolePermission).where(RolePermission.role_id == role.id)
-        )
-    ).scalars().all()
+        (await db_session.execute(select(RolePermission).where(RolePermission.role_id == role.id)))
+        .scalars()
+        .all()
+    )
     assert len(rps) == 2
     by_scope = {rp.scope for rp in rps}
     assert by_scope == {"global", "dept_tree"}
@@ -49,9 +49,7 @@ async def test_create_role_with_permissions(db_session) -> None:
 
 @pytest.mark.asyncio
 async def test_get_role_with_permissions(db_session) -> None:
-    admin = (
-        await db_session.execute(select(Role).where(Role.code == "admin"))
-    ).scalar_one()
+    admin = (await db_session.execute(select(Role).where(Role.code == "admin"))).scalar_one()
     role, perm_items = await get_role_with_permissions(db_session, admin.id)
     assert role.code == "admin"
     # Plan 4 seeded admin with 15 perms; 0006 adds 3 more => 18.
@@ -60,9 +58,7 @@ async def test_get_role_with_permissions(db_session) -> None:
 
 @pytest.mark.asyncio
 async def test_count_role_users_and_permissions(db_session) -> None:
-    admin = (
-        await db_session.execute(select(Role).where(Role.code == "admin"))
-    ).scalar_one()
+    admin = (await db_session.execute(select(Role).where(Role.code == "admin"))).scalar_one()
     user_count = await count_role_users(db_session, admin.id)
     perm_count = await count_role_permissions(db_session, admin.id)
     assert user_count >= 0
@@ -87,10 +83,10 @@ async def test_delete_role_cascades_via_fk(db_session) -> None:
     assert deleted_user_roles == 0
 
     rps = (
-        await db_session.execute(
-            select(RolePermission).where(RolePermission.role_id == role_id)
-        )
-    ).scalars().all()
+        (await db_session.execute(select(RolePermission).where(RolePermission.role_id == role_id)))
+        .scalars()
+        .all()
+    )
     assert rps == []
 
 

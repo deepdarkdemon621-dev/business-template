@@ -10,9 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 async def test_role_create_permission_exists(db_session: AsyncSession) -> None:
     result = await db_session.execute(
-        text(
-            "SELECT code, resource FROM permissions WHERE code = 'role:create'"
-        )
+        text("SELECT code, resource FROM permissions WHERE code = 'role:create'")
     )
     row = result.first()
     assert row is not None
@@ -22,9 +20,7 @@ async def test_role_create_permission_exists(db_session: AsyncSession) -> None:
 
 async def test_role_update_permission_exists(db_session: AsyncSession) -> None:
     result = await db_session.execute(
-        text(
-            "SELECT code, resource FROM permissions WHERE code = 'role:update'"
-        )
+        text("SELECT code, resource FROM permissions WHERE code = 'role:update'")
     )
     row = result.first()
     assert row is not None
@@ -34,9 +30,7 @@ async def test_role_update_permission_exists(db_session: AsyncSession) -> None:
 
 async def test_role_delete_permission_exists(db_session: AsyncSession) -> None:
     result = await db_session.execute(
-        text(
-            "SELECT code, resource FROM permissions WHERE code = 'role:delete'"
-        )
+        text("SELECT code, resource FROM permissions WHERE code = 'role:delete'")
     )
     row = result.first()
     assert row is not None
@@ -130,9 +124,9 @@ async def test_downgrade_reverses_migration() -> None:
                         )
                     )
                     codes = [r[0] for r in result]
-                    assert (
-                        len(codes) == 0
-                    ), f"role:create/update/delete should not exist after downgrade, got {codes}"
+                    assert len(codes) == 0, (
+                        f"role:create/update/delete should not exist after downgrade, got {codes}"
+                    )
 
                     # 2. role:list, role:read, role:assign (from 0003) must STILL exist
                     result = sync_conn.execute(
@@ -143,9 +137,7 @@ async def test_downgrade_reverses_migration() -> None:
                         )
                     )
                     codes = [r[0] for r in result]
-                    assert (
-                        len(codes) == 3
-                    ), f"Expected 3 role perms from 0003, got {codes}"
+                    assert len(codes) == 3, f"Expected 3 role perms from 0003, got {codes}"
                     assert "role:list" in codes
                     assert "role:read" in codes
                     assert "role:assign" in codes
@@ -158,9 +150,9 @@ async def test_downgrade_reverses_migration() -> None:
                         )
                     )
                     orphaned = result.fetchall()
-                    assert (
-                        len(orphaned) == 0
-                    ), f"Found {len(orphaned)} orphaned role_permissions rows"
+                    assert len(orphaned) == 0, (
+                        f"Found {len(orphaned)} orphaned role_permissions rows"
+                    )
 
                 await conn.run_sync(_check)
         finally:

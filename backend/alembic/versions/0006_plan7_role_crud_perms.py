@@ -4,6 +4,7 @@ Revision ID: 0006_plan7_role_crud_perms
 Revises: 0005_plan6_dept_scope_value
 Create Date: 2026-04-22
 """
+
 from __future__ import annotations
 
 import uuid
@@ -47,9 +48,7 @@ def upgrade() -> None:
     )
 
     conn = op.get_bind()
-    admin_row = conn.execute(
-        sa.select(roles.c.id).where(roles.c.code == "admin")
-    ).first()
+    admin_row = conn.execute(sa.select(roles.c.id).where(roles.c.code == "admin")).first()
     if admin_row is None:
         # Seeds not run yet (fresh DB via pure alembic); skip grants.
         admin_id = None

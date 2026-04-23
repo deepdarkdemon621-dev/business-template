@@ -17,9 +17,7 @@ async def admin_token(
 ) -> tuple[AsyncClient, str]:
     """Admin user assigned the seeded 'admin' role (all seed perms at scope=global,
     including role:create/update/delete from migration 0006)."""
-    admin_role = (
-        await db_session.execute(select(Role).where(Role.code == "admin"))
-    ).scalar_one()
+    admin_role = (await db_session.execute(select(Role).where(Role.code == "admin"))).scalar_one()
     u = User(
         email="rbac-admin@ex.com",
         password_hash=hash_password("pw-aaa111"),
@@ -38,9 +36,7 @@ async def member_token(
     client_with_db: AsyncClient, db_session: AsyncSession
 ) -> tuple[AsyncClient, str]:
     """Plain user with the built-in 'member' role (no role:* write perms)."""
-    member_role = (
-        await db_session.execute(select(Role).where(Role.code == "member"))
-    ).scalar_one()
+    member_role = (await db_session.execute(select(Role).where(Role.code == "member"))).scalar_one()
     u = User(
         email="rbac-member@ex.com",
         password_hash=hash_password("pw-aaa111"),

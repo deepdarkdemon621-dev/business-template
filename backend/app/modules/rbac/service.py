@@ -72,8 +72,7 @@ class RoleService:
                 "code": role.code,
                 "name": role.name,
                 "permissions": [
-                    {"code": p.permission_code, "scope": p.scope.value}
-                    for p in payload.permissions
+                    {"code": p.permission_code, "scope": p.scope.value} for p in payload.permissions
                 ],
             },
         )

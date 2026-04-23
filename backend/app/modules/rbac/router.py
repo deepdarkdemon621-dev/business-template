@@ -220,6 +220,4 @@ async def delete_role_endpoint(
     role = await _load_role_or_404(db, role_id)
     deleted_user_roles = await RoleService().delete(db, role)
     await db.commit()
-    return RoleDeletedOut.model_validate(
-        {"id": role_id, "deleted_user_roles": deleted_user_roles}
-    )
+    return RoleDeletedOut.model_validate({"id": role_id, "deleted_user_roles": deleted_user_roles})

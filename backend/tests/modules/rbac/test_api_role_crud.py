@@ -14,9 +14,7 @@ async def test_list_roles_returns_counts(
     admin_token: tuple[AsyncClient, str],
 ) -> None:
     client, token = admin_token
-    resp = await client.get(
-        "/api/v1/roles", headers={"Authorization": f"Bearer {token}"}
-    )
+    resp = await client.get("/api/v1/roles", headers={"Authorization": f"Bearer {token}"})
     assert resp.status_code == 200, resp.text
     body = resp.json()
     assert "items" in body
@@ -32,9 +30,8 @@ async def test_get_role_detail(
     admin_token: tuple[AsyncClient, str], db_session: AsyncSession
 ) -> None:
     from app.modules.rbac.models import Role
-    admin = (
-        await db_session.execute(select(Role).where(Role.code == "admin"))
-    ).scalar_one()
+
+    admin = (await db_session.execute(select(Role).where(Role.code == "admin"))).scalar_one()
 
     client, token = admin_token
     resp = await client.get(
@@ -138,9 +135,8 @@ async def test_patch_builtin_metadata_refused(
     admin_token: tuple[AsyncClient, str], db_session: AsyncSession
 ) -> None:
     from app.modules.rbac.models import Role
-    admin_role = (
-        await db_session.execute(select(Role).where(Role.code == "admin"))
-    ).scalar_one()
+
+    admin_role = (await db_session.execute(select(Role).where(Role.code == "admin"))).scalar_one()
 
     client, token = admin_token
     resp = await client.patch(
@@ -178,9 +174,8 @@ async def test_delete_builtin_refused(
     admin_token: tuple[AsyncClient, str], db_session: AsyncSession
 ) -> None:
     from app.modules.rbac.models import Role
-    admin_role = (
-        await db_session.execute(select(Role).where(Role.code == "admin"))
-    ).scalar_one()
+
+    admin_role = (await db_session.execute(select(Role).where(Role.code == "admin"))).scalar_one()
 
     client, token = admin_token
     resp = await client.delete(

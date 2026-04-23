@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(rm -f tmp-smoke-admin-dashboard.png)",
+      "Bash(rm -f .claude/scheduled_tasks.lock)"
+    ]
+  }
+}

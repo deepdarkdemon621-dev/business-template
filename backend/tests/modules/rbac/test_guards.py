@@ -91,9 +91,7 @@ async def test_superadmin_role_locked_refuses_mutation(db_session: AsyncSession)
     from app.modules.rbac.models import Role
     from sqlalchemy import select
 
-    role = (
-        await db_session.execute(select(Role).where(Role.is_superadmin.is_(True)))
-    ).scalar_one()
+    role = (await db_session.execute(select(Role).where(Role.is_superadmin.is_(True)))).scalar_one()
 
     with pytest.raises(GuardViolationError) as exc:
         await SuperadminRoleLocked().check(db_session, role)
@@ -106,9 +104,7 @@ async def test_superadmin_role_locked_skips_non_superadmin(db_session: AsyncSess
     from app.modules.rbac.models import Role
     from sqlalchemy import select
 
-    admin = (
-        await db_session.execute(select(Role).where(Role.code == "admin"))
-    ).scalar_one()
+    admin = (await db_session.execute(select(Role).where(Role.code == "admin"))).scalar_one()
     # Should not raise.
     await SuperadminRoleLocked().check(db_session, admin)
 
@@ -120,14 +116,10 @@ async def test_builtin_role_locked_refuses_metadata_edit(db_session: AsyncSessio
     from app.modules.rbac.models import Role
     from sqlalchemy import select
 
-    admin = (
-        await db_session.execute(select(Role).where(Role.code == "admin"))
-    ).scalar_one()
+    admin = (await db_session.execute(select(Role).where(Role.code == "admin"))).scalar_one()
 
     with pytest.raises(GuardViolationError) as exc:
-        await BuiltinRoleLocked().check(
-            db_session, admin, changing={"name"}
-        )
+        await BuiltinRoleLocked().check(db_session, admin, changing={"name"})
     assert exc.value.code == "role.builtin-locked"
 
 
@@ -137,9 +129,7 @@ async def test_builtin_role_locked_allows_matrix_only_edits(db_session: AsyncSes
     from app.modules.rbac.models import Role
     from sqlalchemy import select
 
-    admin = (
-        await db_session.execute(select(Role).where(Role.code == "admin"))
-    ).scalar_one()
+    admin = (await db_session.execute(select(Role).where(Role.code == "admin"))).scalar_one()
 
     # Matrix-only edits pass (changing set contains only "permissions").
     await BuiltinRoleLocked().check(db_session, admin, changing={"permissions"})
@@ -152,9 +142,7 @@ async def test_builtin_role_locked_refuses_delete(db_session: AsyncSession) -> N
     from app.modules.rbac.models import Role
     from sqlalchemy import select
 
-    admin = (
-        await db_session.execute(select(Role).where(Role.code == "admin"))
-    ).scalar_one()
+    admin = (await db_session.execute(select(Role).where(Role.code == "admin"))).scalar_one()
 
     with pytest.raises(GuardViolationError) as exc:
         # No `changing` kwarg means "delete" in the guard's contract.
