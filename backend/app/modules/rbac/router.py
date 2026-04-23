@@ -9,7 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_session
 from app.core.errors import ProblemDetails
-from app.core.pagination import Page, PageQuery
+from app.core.pagination import Page, PageQuery, paginate
 from app.core.permissions import (
     SUPERADMIN_ALL,
     current_user_dep,
@@ -20,10 +20,8 @@ from app.modules.auth.models import User
 from app.modules.rbac.crud import (
     count_role_users,
     get_role_with_permissions,
-    list_all_permissions,
-    list_roles_with_counts,
 )
-from app.modules.rbac.models import Role
+from app.modules.rbac.models import Permission, Role, RolePermission, UserRole
 from app.modules.rbac.schemas import (
     MePermissionsOut,
     PermissionOut,
@@ -62,32 +60,43 @@ async def list_roles(
     pq: Annotated[PageQuery, Depends()],
     db: AsyncSession = Depends(get_session),
 ) -> Page[RoleListOut]:
-    total_stmt = select(func.count()).select_from(Role)
-    total = int((await db.execute(total_stmt)).scalar_one())
-    offset = (pq.page - 1) * pq.size
-    rows = await list_roles_with_counts(db, limit=pq.size, offset=offset)
+    stmt = select(Role).order_by(Role.name)
+    raw = await paginate(db, stmt, pq)
+    role_ids = [r.id for r in raw.items]
+
+    user_counts: dict = {}
+    perm_counts: dict = {}
+    if role_ids:
+        uc_result = await db.execute(
+            select(UserRole.role_id, func.count())
+            .where(UserRole.role_id.in_(role_ids))
+            .group_by(UserRole.role_id)
+        )
+        user_counts = dict(uc_result.all())
+        pc_result = await db.execute(
+            select(RolePermission.role_id, func.count())
+            .where(RolePermission.role_id.in_(role_ids))
+            .group_by(RolePermission.role_id)
+        )
+        perm_counts = dict(pc_result.all())
 
     items = [
         RoleListOut.model_validate(
             {
-                "id": r["role"].id,
-                "code": r["role"].code,
-                "name": r["role"].name,
-                "is_builtin": r["role"].is_builtin,
-                "is_superadmin": r["role"].is_superadmin,
-                "user_count": r["user_count"],
-                "permission_count": r["permission_count"],
-                "updated_at": r["role"].updated_at,
-            },
+                "id": r.id,
+                "code": r.code,
+                "name": r.name,
+                "is_builtin": r.is_builtin,
+                "is_superadmin": r.is_superadmin,
+                "user_count": int(user_counts.get(r.id, 0)),
+                "permission_count": int(perm_counts.get(r.id, 0)),
+                "updated_at": r.updated_at,
+            }
         )
-        for r in rows
+        for r in raw.items
     ]
     return Page[RoleListOut](
-        items=items,
-        total=total,
-        page=pq.page,
-        size=pq.size,
-        has_next=offset + len(items) < total,
+        items=items, total=raw.total, page=raw.page, size=raw.size, has_next=raw.has_next,
     )
 
 
@@ -128,17 +137,11 @@ async def list_permissions_endpoint(
     pq: Annotated[PageQuery, Depends()],
     db: AsyncSession = Depends(get_session),
 ) -> Page[PermissionOut]:
-    perms = await list_all_permissions(db)
-    total = len(perms)
-    offset = (pq.page - 1) * pq.size
-    window = perms[offset : offset + pq.size]
-    items = [PermissionOut.model_validate(p, from_attributes=True) for p in window]
+    stmt = select(Permission).order_by(Permission.resource, Permission.action)
+    raw = await paginate(db, stmt, pq)
+    items = [PermissionOut.model_validate(p, from_attributes=True) for p in raw.items]
     return Page[PermissionOut](
-        items=items,
-        total=total,
-        page=pq.page,
-        size=pq.size,
-        has_next=offset + len(items) < total,
+        items=items, total=raw.total, page=raw.page, size=raw.size, has_next=raw.has_next,
     )
 
 

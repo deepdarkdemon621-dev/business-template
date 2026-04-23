@@ -9,7 +9,6 @@ from app.modules.rbac.crud import (
     create_role,
     delete_role,
     get_role_with_permissions,
-    list_roles_with_counts,
 )
 from app.modules.rbac.models import Role, RolePermission
 from app.modules.rbac.schemas import RoleCreateIn, RolePermissionItem
@@ -90,21 +89,3 @@ async def test_delete_role_cascades_via_fk(db_session) -> None:
     assert rps == []
 
 
-@pytest.mark.asyncio
-async def test_list_roles_with_counts(db_session) -> None:
-    rows = await list_roles_with_counts(db_session)
-    by_code = {r["role"].code: r for r in rows}
-    assert "admin" in by_code
-    assert by_code["admin"]["user_count"] >= 0
-    assert by_code["admin"]["permission_count"] >= 15
-
-
-@pytest.mark.asyncio
-async def test_list_all_permissions(db_session) -> None:
-    from app.modules.rbac.crud import list_all_permissions
-
-    perms = await list_all_permissions(db_session)
-    codes = {p.code for p in perms}
-    assert "user:read" in codes
-    assert "role:create" in codes  # seeded by 0006
-    assert "department:move" in codes  # seeded by 0005

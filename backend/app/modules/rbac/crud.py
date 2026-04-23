@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import uuid
-from typing import Any
 
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -125,40 +124,6 @@ async def delete_role(session: AsyncSession, role: Role) -> int:
     await session.delete(role)
     await session.flush()
     return user_count
-
-
-async def list_roles_with_counts(
-    session: AsyncSession,
-    *,
-    limit: int | None = None,
-    offset: int = 0,
-) -> list[dict[str, Any]]:
-    user_count_sub = (
-        select(UserRole.role_id, func.count().label("uc")).group_by(UserRole.role_id).subquery()
-    )
-    perm_count_sub = (
-        select(RolePermission.role_id, func.count().label("pc"))
-        .group_by(RolePermission.role_id)
-        .subquery()
-    )
-    stmt = (
-        select(Role, user_count_sub.c.uc, perm_count_sub.c.pc)
-        .outerjoin(user_count_sub, user_count_sub.c.role_id == Role.id)
-        .outerjoin(perm_count_sub, perm_count_sub.c.role_id == Role.id)
-        .order_by(Role.name)
-    )
-    if limit is not None:
-        stmt = stmt.limit(limit).offset(offset)
-    rows = (await session.execute(stmt)).all()
-    return [
-        {"role": role, "user_count": int(uc or 0), "permission_count": int(pc or 0)}
-        for role, uc, pc in rows
-    ]
-
-
-async def list_all_permissions(session: AsyncSession) -> list[Permission]:
-    stmt = select(Permission).order_by(Permission.resource, Permission.action)
-    return list((await session.execute(stmt)).scalars().all())
 
 
 async def replace_role_permissions(
