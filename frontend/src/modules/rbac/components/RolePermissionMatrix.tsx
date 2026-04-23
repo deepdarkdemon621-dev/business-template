@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import { RadioOption } from "@/components/ui/radio-option";
 import type { Permission, RolePermissionItem, Scope } from "../types";
 
 const SCOPE_CHOICES: { label: string; value: Scope | null }[] = [
@@ -74,8 +75,7 @@ export function RolePermissionMatrix({
                         <td className="p-2 text-muted-foreground">{p.description}</td>
                         {SCOPE_CHOICES.map((c) => (
                           <td key={c.label} className="p-2 text-center">
-                            <input
-                              type="radio"
+                            <RadioOption
                               name={`perm-${p.code}`}
                               aria-label={`${p.code} ${c.label}`}
                               checked={current === c.value}
