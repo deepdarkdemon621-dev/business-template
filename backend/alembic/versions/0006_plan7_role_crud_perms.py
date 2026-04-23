@@ -49,11 +49,7 @@ def upgrade() -> None:
 
     conn = op.get_bind()
     admin_row = conn.execute(sa.select(roles.c.id).where(roles.c.code == "admin")).first()
-    if admin_row is None:
-        # Seeds not run yet (fresh DB via pure alembic); skip grants.
-        admin_id = None
-    else:
-        admin_id = admin_row[0]
+    admin_id = None if admin_row is None else admin_row[0]
 
     for code, resource, action, desc in _NEW_PERMISSIONS:
         pid = uuid.uuid4()
