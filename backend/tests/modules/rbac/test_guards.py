@@ -160,3 +160,18 @@ async def test_builtin_role_locked_refuses_delete(db_session: AsyncSession) -> N
         # No `changing` kwarg means "delete" in the guard's contract.
         await BuiltinRoleLocked().check(db_session, admin)
     assert exc.value.code == "role.builtin-locked"
+
+
+def test_role_guards_wired() -> None:
+    from app.modules.rbac.guards import BuiltinRoleLocked, SuperadminRoleLocked
+    from app.modules.rbac.models import Role
+
+    guards = Role.__guards__
+    assert "update" in guards
+    assert "delete" in guards
+    update_types = {type(g) for g in guards["update"]}
+    delete_types = {type(g) for g in guards["delete"]}
+    assert SuperadminRoleLocked in update_types
+    assert BuiltinRoleLocked in update_types
+    assert SuperadminRoleLocked in delete_types
+    assert BuiltinRoleLocked in delete_types

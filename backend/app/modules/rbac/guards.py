@@ -201,3 +201,8 @@ Department.__guards__ = {
     "delete": [HasChildren(), HasAssignedUsers()],
     "move": [NoCycle()],
 }
+
+Role.__guards__ = {
+    "update": [SuperadminRoleLocked(), BuiltinRoleLocked()],
+    "delete": [SuperadminRoleLocked(), BuiltinRoleLocked()],
+}
