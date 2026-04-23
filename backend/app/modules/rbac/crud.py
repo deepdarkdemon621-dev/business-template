@@ -1,11 +1,13 @@
 from __future__ import annotations
 
 import uuid
+from typing import Any
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.modules.rbac.models import Department, Role, UserRole
+from app.modules.rbac.models import Department, Permission, Role, RolePermission, UserRole
+from app.modules.rbac.schemas import RoleCreateIn, RolePermissionItem
 
 
 async def list_departments(db: AsyncSession):
@@ -40,3 +42,123 @@ async def revoke_role(db: AsyncSession, user_id: uuid.UUID, role_id: uuid.UUID) 
     await db.delete(row)
     await db.flush()
     return True
+
+
+async def create_role(
+    session: AsyncSession,
+    payload: RoleCreateIn,
+) -> Role:
+    role = Role(code=payload.code, name=payload.name, is_builtin=False, is_superadmin=False)
+    session.add(role)
+    await session.flush()  # assign role.id
+    if payload.permissions:
+        await _insert_role_permissions(session, role.id, payload.permissions)
+    return role
+
+
+async def _insert_role_permissions(
+    session: AsyncSession,
+    role_id: uuid.UUID,
+    items: list[RolePermissionItem],
+) -> None:
+    if not items:
+        return
+    codes = [i.permission_code for i in items]
+    code_to_id = dict(
+        (
+            await session.execute(
+                select(Permission.code, Permission.id).where(Permission.code.in_(codes))
+            )
+        ).all()
+    )
+    missing = [c for c in codes if c not in code_to_id]
+    if missing:
+        raise ValueError(f"Unknown permission codes: {missing}")
+
+    session.add_all(
+        [
+            RolePermission(
+                role_id=role_id,
+                permission_id=code_to_id[item.permission_code],
+                scope=item.scope.value,
+            )
+            for item in items
+        ]
+    )
+
+
+async def get_role_with_permissions(
+    session: AsyncSession,
+    role_id: uuid.UUID,
+) -> tuple[Role, list[RolePermissionItem]]:
+    role = await session.get(Role, role_id)
+    if role is None:
+        raise LookupError(f"Role {role_id} not found.")
+    rows = (
+        await session.execute(
+            select(Permission.code, RolePermission.scope)
+            .join(RolePermission, RolePermission.permission_id == Permission.id)
+            .where(RolePermission.role_id == role_id)
+            .order_by(Permission.code)
+        )
+    ).all()
+    items = [RolePermissionItem(permission_code=code, scope=scope) for code, scope in rows]
+    return role, items
+
+
+async def count_role_users(session: AsyncSession, role_id: uuid.UUID) -> int:
+    stmt = select(func.count()).select_from(UserRole).where(UserRole.role_id == role_id)
+    return int((await session.execute(stmt)).scalar_one())
+
+
+async def count_role_permissions(session: AsyncSession, role_id: uuid.UUID) -> int:
+    stmt = (
+        select(func.count())
+        .select_from(RolePermission)
+        .where(RolePermission.role_id == role_id)
+    )
+    return int((await session.execute(stmt)).scalar_one())
+
+
+async def delete_role(session: AsyncSession, role: Role) -> int:
+    """Delete role; returns count of cascaded user_roles before deletion.
+
+    DB-level ON DELETE CASCADE removes role_permissions + user_roles.
+    """
+    user_count = await count_role_users(session, role.id)
+    await session.delete(role)
+    await session.flush()
+    return user_count
+
+
+async def list_roles_with_counts(
+    session: AsyncSession,
+    *,
+    limit: int | None = None,
+    offset: int = 0,
+) -> list[dict[str, Any]]:
+    user_count_sub = (
+        select(UserRole.role_id, func.count().label("uc"))
+        .group_by(UserRole.role_id)
+        .subquery()
+    )
+    perm_count_sub = (
+        select(RolePermission.role_id, func.count().label("pc"))
+        .group_by(RolePermission.role_id)
+        .subquery()
+    )
+    stmt = (
+        select(Role, user_count_sub.c.uc, perm_count_sub.c.pc)
+        .outerjoin(user_count_sub, user_count_sub.c.role_id == Role.id)
+        .outerjoin(perm_count_sub, perm_count_sub.c.role_id == Role.id)
+        .order_by(Role.name)
+    )
+    if limit is not None:
+        stmt = stmt.limit(limit).offset(offset)
+    rows = (await session.execute(stmt)).all()
+    return [
+        {"role": role, "user_count": int(uc or 0), "permission_count": int(pc or 0)}
+        for role, uc, pc in rows
+    ]
+
+
