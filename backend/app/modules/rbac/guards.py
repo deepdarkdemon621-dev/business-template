@@ -151,6 +151,46 @@ class SuperadminRoleLocked:
             )
 
 
+class BuiltinRoleLocked:
+    """Refuse name/code edits and delete on is_builtin=True roles.
+
+    Matrix (`permissions`) edits are allowed — tenants can tune what
+    builtin roles do, but not rename or remove them.
+
+    Caller passes `changing={"name","code","permissions",...}` for updates;
+    omit `changing` entirely to signal a delete attempt.
+    """
+
+    _IMMUTABLE_FIELDS = frozenset({"code", "name"})
+
+    async def check(
+        self,
+        session: AsyncSession,
+        instance: Any,
+        *,
+        changing: set[str] | None = None,
+        **_: Any,
+    ) -> None:
+        if not getattr(instance, "is_builtin", False):
+            return
+        # Delete signalled by absence of `changing`.
+        if changing is None:
+            raise GuardViolationError(
+                code="role.builtin-locked",
+                ctx={"role_id": str(instance.id), "operation": "delete"},
+            )
+        forbidden = self._IMMUTABLE_FIELDS & changing
+        if forbidden:
+            raise GuardViolationError(
+                code="role.builtin-locked",
+                ctx={
+                    "role_id": str(instance.id),
+                    "operation": "update",
+                    "immutable_fields": sorted(forbidden),
+                },
+            )
+
+
 # Wire Department.__guards__ here (not at the bottom of rbac/models.py)
 # because models.py is imported mid-load by guards.py's top-level
 # `from app.modules.rbac.models import Department, ...`. At the bottom of
