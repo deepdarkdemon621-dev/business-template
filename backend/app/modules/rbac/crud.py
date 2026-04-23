@@ -167,3 +167,57 @@ async def list_all_permissions(session: AsyncSession) -> list[Permission]:
     return list((await session.execute(stmt)).scalars().all())
 
 
+async def replace_role_permissions(
+    session: AsyncSession,
+    role_id: uuid.UUID,
+    items: list[RolePermissionItem],
+) -> dict[str, list[str]]:
+    """Replace the role's permission set atomically; return a diff summary."""
+    current_rows = (
+        await session.execute(
+            select(Permission.code, RolePermission.scope, RolePermission.permission_id)
+            .join(RolePermission, RolePermission.permission_id == Permission.id)
+            .where(RolePermission.role_id == role_id)
+        )
+    ).all()
+    current = {code: (scope, pid) for code, scope, pid in current_rows}
+
+    desired = {i.permission_code: i.scope.value for i in items}
+
+    added = sorted(set(desired) - set(current))
+    removed = sorted(set(current) - set(desired))
+    scope_changed = sorted(
+        c for c in (set(desired) & set(current)) if desired[c] != current[c][0]
+    )
+
+    # Delete removed.
+    for code in removed:
+        _, pid = current[code]
+        await session.execute(
+            RolePermission.__table__.delete().where(
+                (RolePermission.role_id == role_id)
+                & (RolePermission.permission_id == pid)
+            )
+        )
+
+    # Update scope_changed.
+    for code in scope_changed:
+        _, pid = current[code]
+        await session.execute(
+            RolePermission.__table__.update()
+            .where(
+                (RolePermission.role_id == role_id)
+                & (RolePermission.permission_id == pid)
+            )
+            .values(scope=desired[code])
+        )
+
+    # Insert added — reuse _insert_role_permissions for code resolution + errors.
+    new_items = [i for i in items if i.permission_code in added]
+    if new_items:
+        await _insert_role_permissions(session, role_id, new_items)
+
+    await session.flush()
+    return {"added": added, "removed": removed, "scope_changed": scope_changed}
+
+
