@@ -116,30 +116,30 @@ export function RoleEditPage() {
       }
       navigate("/admin/roles");
     } catch (err: unknown) {
-      // Surface field-level errors from ProblemDetails.errors; for guard
-      // violations (409 role.builtin-locked), surface the message on both code + name.
-      const anyErr = err as { response?: { data?: unknown } };
-      const data = anyErr.response?.data;
-      if (isProblemDetails(data)) {
-        if (data.code === "role.builtin-locked") {
+      // The axios interceptor in @/api/client unwraps RFC-9457 Problem Details
+      // and rejects with the ProblemDetails object directly — not an AxiosError.
+      if (isProblemDetails(err)) {
+        if (err.code === "role.builtin-locked") {
           helpers.setFieldErrors({
             code: "This role is built-in; code cannot be changed.",
             name: "This role is built-in; name cannot be changed.",
           });
           return;
         }
-        if (data.code === "role.code-conflict") {
-          helpers.setFieldErrors({ code: data.detail });
+        if (err.code === "role.code-conflict") {
+          helpers.setFieldErrors({ code: err.detail });
           return;
         }
         const fieldErrs: Record<string, string> = {};
-        for (const e of data.errors ?? []) {
+        for (const e of err.errors ?? []) {
           fieldErrs[e.field] = e.message ?? e.code;
         }
         if (Object.keys(fieldErrs).length > 0) {
           helpers.setFieldErrors(fieldErrs);
           return;
         }
+        setError(err.detail);
+        return;
       }
       setError(problemMessage(err));
     }
