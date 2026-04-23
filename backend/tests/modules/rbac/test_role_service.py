@@ -166,3 +166,41 @@ async def test_role_service_update_superadmin_refused(db_session, seeded_rbac) -
     with pytest.raises(ProblemDetails) as exc:
         await svc.update(db_session, superadmin, RoleUpdateIn(name="X"))
     assert exc.value.code == "role.superadmin-locked"
+
+
+# ---------------------------------------------------------------------------
+# E3: RoleService.delete
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_role_service_delete_non_builtin_ok(db_session) -> None:
+    svc = RoleService()
+    role = await svc.create(db_session, RoleCreateIn(code="del_r", name="Del R"))
+    await db_session.commit()
+
+    deleted = await svc.delete(db_session, role)
+    await db_session.commit()
+    assert deleted == 0
+
+
+@pytest.mark.asyncio
+async def test_role_service_delete_builtin_refused(db_session, seeded_rbac) -> None:
+    svc = RoleService()
+    admin = (
+        await db_session.execute(select(Role).where(Role.code == "admin"))
+    ).scalar_one()
+    with pytest.raises(ProblemDetails) as exc:
+        await svc.delete(db_session, admin)
+    assert exc.value.code == "role.builtin-locked"
+
+
+@pytest.mark.asyncio
+async def test_role_service_delete_superadmin_refused(db_session, seeded_rbac) -> None:
+    svc = RoleService()
+    superadmin = (
+        await db_session.execute(select(Role).where(Role.is_superadmin.is_(True)))
+    ).scalar_one()
+    with pytest.raises(ProblemDetails) as exc:
+        await svc.delete(db_session, superadmin)
+    assert exc.value.code == "role.superadmin-locked"
