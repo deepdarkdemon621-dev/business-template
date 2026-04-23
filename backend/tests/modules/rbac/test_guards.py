@@ -82,3 +82,32 @@ async def test_superadmin_bypasses(db_session: AsyncSession, superadmin_role: Ro
     await LastOfKind("superadmin_test").check(
         db_session, u, actor=actor, role_code="superadmin_test"
     )
+
+
+@pytest.mark.asyncio
+async def test_superadmin_role_locked_refuses_mutation(db_session: AsyncSession) -> None:
+    from app.core.guards import GuardViolationError
+    from app.modules.rbac.guards import SuperadminRoleLocked
+    from app.modules.rbac.models import Role
+    from sqlalchemy import select
+
+    role = (
+        await db_session.execute(select(Role).where(Role.is_superadmin.is_(True)))
+    ).scalar_one()
+
+    with pytest.raises(GuardViolationError) as exc:
+        await SuperadminRoleLocked().check(db_session, role)
+    assert exc.value.code == "role.superadmin-locked"
+
+
+@pytest.mark.asyncio
+async def test_superadmin_role_locked_skips_non_superadmin(db_session: AsyncSession) -> None:
+    from app.modules.rbac.guards import SuperadminRoleLocked
+    from app.modules.rbac.models import Role
+    from sqlalchemy import select
+
+    admin = (
+        await db_session.execute(select(Role).where(Role.code == "admin"))
+    ).scalar_one()
+    # Should not raise.
+    await SuperadminRoleLocked().check(db_session, admin)

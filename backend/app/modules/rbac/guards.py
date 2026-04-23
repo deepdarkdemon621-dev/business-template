@@ -135,6 +135,22 @@ class NoCycle:
             )
 
 
+class SuperadminRoleLocked:
+    """Refuse any mutation on the role flagged is_superadmin=True."""
+
+    async def check(
+        self,
+        session: AsyncSession,
+        instance: Any,
+        **_: Any,
+    ) -> None:
+        if getattr(instance, "is_superadmin", False):
+            raise GuardViolationError(
+                code="role.superadmin-locked",
+                ctx={"role_id": str(instance.id), "role_code": instance.code},
+            )
+
+
 # Wire Department.__guards__ here (not at the bottom of rbac/models.py)
 # because models.py is imported mid-load by guards.py's top-level
 # `from app.modules.rbac.models import Department, ...`. At the bottom of
