@@ -11,21 +11,6 @@ Tracks "do later / V-next" features and improvements for this project. Whenever 
 
 ---
 
-## 2026-04-21 — Migrate `UserEditPage` to `<FormRenderer>` pipeline
-
-- **Source**: Plan 5 convention-auditor finding; user accepted deferral at tag time
-- **Context**: Plan 5 shipped `UserEditPage.tsx` with hand-rolled `<Input>`/`<Label>` trees for both create and edit modes. Convention 04 mandates every form go through `<FormRenderer schema={...} />` driven by ajv + JSON Schema + `x-rules`; every other form in the app (Login, PasswordChange, PasswordReset) already does. UserEditPage is the sole outlier and a real convention-04 violation that was deferred to keep Plan 5 prototype scope shippable.
-- **What's needed**:
-  - Derive a JSON Schema for `UserCreateIn` / `UserUpdateIn` (either hand-authored or lifted from generated OpenAPI)
-  - Replace the form body with `<FormRenderer>`; surface server-side `ProblemDetails.errors` via `setFieldErrors`
-  - Keep `<RoleAssignmentPanel>` as-is (it's not a form field — it's a role-diff panel); render it alongside the renderer in edit mode
-  - Register `passwordPolicy` custom rule in `@/lib/ajv.ts` if not already present
-  - Update `UserEditPage.test.tsx` to interact via the rendered fields (labels should still match the Chinese strings)
-- **Work estimate**: ~1 small plan's worth (~half-day). Touches UserEditPage + test + potentially one ajv rule registration.
-- **Dependencies**: none. Best landed before/with the Role-CRUD plan so both admin forms follow the same pattern from day 1.
-
----
-
 ## 2026-04-20 — `LastOfKind` race condition under READ COMMITTED
 
 - **Source**: Plan 5 Task A2 code quality review
@@ -57,11 +42,11 @@ Tracks "do later / V-next" features and improvements for this project. Whenever 
 - **Source**: Plan 5 design discussion; user chose minimal prototype scope
 - **Context**: Plan 5 ships a working prototype (User CRUD + Role assignment + DataTable + AppShell primitives). These extensions were scoped out to keep the first admin UI shippable, but must follow once the prototype validates the stack end-to-end.
 - **What's needed** (each can be its own small plan):
-  - **Department tree CRUD UI** — create/rename/move/delete nodes, parent picker, materialized-path integrity; FE tree component + backend `move_department` from existing backlog entry
-  - **Role CRUD + RolePermission editor** — create/edit roles, grant/revoke permissions with scope picker (global / dept_tree / dept / own); permission matrix UI
+  - **Department tree CRUD UI** — ✅ shipped in Plan 6 (v0.6.0-departments-scoped-roles)
+  - **Role CRUD + RolePermission editor** — ✅ shipped in Plan 7 (v0.7.0-role-crud)
   - **Audit log viewer** — filterable list of mutation events (who / when / what resource / before-after diff), per-resource drill-down
   - **Session management admin view** — view all active sessions across users, revoke remotely (extends existing `/me/sessions` to admin-scoped endpoint)
-- **Work estimate**: each ~0.5–1 plan's worth. Best sequenced: Role editor → Department tree → Audit viewer → Session admin.
+- **Work estimate**: each ~0.5–1 plan's worth. Remaining order: Audit viewer → Session admin.
 - **Dependencies**: Plan 5 prototype complete (DataTable + AppShell primitives available). Department tree needs `move_department` backend op (itself already backlogged).
 
 ---
