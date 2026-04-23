@@ -11,10 +11,11 @@ export interface FieldProps {
 }
 
 export function StringField({ name, schema, register, error }: FieldProps) {
+  const inputType = (schema["x-inputType"] as string | undefined) ?? "text";
   return (
     <div className="flex flex-col gap-1">
       <Label htmlFor={name}>{(schema.title as string) ?? name}</Label>
-      <Input id={name} {...register(name)} />
+      <Input id={name} type={inputType} {...register(name)} />
       {error && (
         <span role="alert" className="text-sm text-red-600">
           {error}

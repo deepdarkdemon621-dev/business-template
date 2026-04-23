@@ -47,9 +47,11 @@ describe("UserEditPage create mode", () => {
       </MemoryRouter>
     );
 
-    await userEvent.type(screen.getByLabelText(/邮箱|email/i), "c@ex.com");
-    await userEvent.type(screen.getByLabelText(/姓名|full name/i), "C");
-    await userEvent.type(screen.getByLabelText(/^密码 \*$|password/i), "GoodOne123");
+    // FormRenderer renders <Label htmlFor="email">邮箱</Label> from schema.title
+    await userEvent.type(screen.getByLabelText(/邮箱/i), "c@ex.com");
+    await userEvent.type(screen.getByLabelText(/姓名/i), "C");
+    // Password label is "密码" (no asterisk — FormRenderer does not append required marker)
+    await userEvent.type(screen.getByLabelText(/^密码$/i), "GoodOne123");
 
     await userEvent.click(screen.getByRole("button", { name: /创建|create/i }));
 
@@ -91,6 +93,9 @@ describe("UserEditPage edit mode", () => {
       </MemoryRouter>
     );
 
+    // Email is shown as plain text (not an input) in edit mode
+    await waitFor(() => expect(screen.getByText("e@ex.com")).toBeInTheDocument());
+    // fullName is rendered as a FormRenderer input — wait for it to be pre-filled
     await waitFor(() => expect(screen.getByDisplayValue("E")).toBeInTheDocument());
 
     // Member is currently checked; Admin is not. Toggle: uncheck member, check admin.

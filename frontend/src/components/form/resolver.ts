@@ -80,12 +80,17 @@ export function makeResolver(schema: object) {
         path = path ? `${path}.${err.params["missingProperty"]}` : (err.params["missingProperty"] as string);
       }
 
-      // Custom rule keywords (mustMatch, dateOrder) emit on the root object
-      // with no instancePath. Assign to the *second* field in the pair so
-      // the error shows up somewhere visible.
+      // Custom rule keywords (mustMatch, dateOrder, passwordPolicy) emit on
+      // the root object with no instancePath. Assign to the most relevant
+      // field so the error shows up somewhere visible.
       if (!path && err.params) {
         const p = err.params as Record<string, unknown>;
-        path = (p["b"] as string) ?? (p["end"] as string) ?? "root";
+        // mustMatch → b field; dateOrder → end field; passwordPolicy → field
+        path =
+          (p["b"] as string) ??
+          (p["end"] as string) ??
+          (p["field"] as string) ??
+          "root";
       }
 
       if (!fieldErrors[path]) {

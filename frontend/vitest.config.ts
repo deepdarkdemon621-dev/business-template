@@ -9,5 +9,6 @@ export default defineConfig({
     environment: "jsdom",
     globals: true,
     setupFiles: ["./src/test-setup.ts"],
+    exclude: [".tsc-out/**", "node_modules/**"],
   },
 });
