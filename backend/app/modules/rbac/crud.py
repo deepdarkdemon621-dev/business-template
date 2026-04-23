@@ -162,3 +162,8 @@ async def list_roles_with_counts(
     ]
 
 
+async def list_all_permissions(session: AsyncSession) -> list[Permission]:
+    stmt = select(Permission).order_by(Permission.resource, Permission.action)
+    return list((await session.execute(stmt)).scalars().all())
+
+
