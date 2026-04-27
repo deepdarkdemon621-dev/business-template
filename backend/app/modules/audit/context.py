@@ -74,5 +74,17 @@ def get_context() -> AuditContext:
 
 
 def set_context_for_test(ctx: AuditContext) -> None:
-    """Test-only helper. Never call from production code."""
+    """Test-only helper. Never call from production code.
+
+    Guarded by APP_ENV: refuses to run unless APP_ENV is unset (test runner)
+    or set to 'test'.
+    """
+    import os
+
+    env = os.getenv("APP_ENV", "").lower()
+    if env not in ("", "test"):
+        raise RuntimeError(
+            "set_context_for_test must not be called outside the test environment "
+            f"(APP_ENV={env!r})"
+        )
     audit_context.set(ctx)
