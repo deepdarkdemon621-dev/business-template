@@ -62,8 +62,8 @@ async def test_role_permissions_updated_stores_added_removed(db_session, db_audi
 async def test_login_failed_stores_reason_and_no_resource(db_session, anon_audit_ctx):
     await audit.login_failed(db_session, "x@y.com", "bad_password")
     await db_session.flush()
-    # Filter by resource_label-equivalent: use JSONB email key so we only
-    # see this test's row even if other tests leave committed login_failed rows.
+    # Filter by JSONB email key so we only see this test's row even if
+    # integration tests leave committed login_failed rows in the same session.
     from sqlalchemy.dialects.postgresql import JSONB
     ev = (await db_session.execute(
         select(AuditEvent).where(

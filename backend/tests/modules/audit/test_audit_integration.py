@@ -95,7 +95,7 @@ async def test_login_success_emits_event_and_updates_last_login_at(
     assert user.last_login_at is not None, "last_login_at was not set"
 
 
-async def test_login_bad_password_emits_failed_event(
+async def test_login_bad_password_emits_login_failed(
     client_with_db: AsyncClient,
     seeded_user_password: tuple[str, str],
 ) -> None:
@@ -114,7 +114,7 @@ async def test_login_bad_password_emits_failed_event(
     assert ev.metadata_["reason"] == "bad_password"
 
 
-async def test_login_unknown_email_emits_failed_event(
+async def test_login_unknown_email_emits_login_failed_unknown_email(
     client_with_db: AsyncClient,
 ) -> None:
     """Unknown e-mail writes auth.login_failed with reason=unknown_email.

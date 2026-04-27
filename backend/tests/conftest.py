@@ -86,6 +86,24 @@ async def _prepare_test_db():
     yield
 
 
+@pytest_asyncio.fixture(scope="session", autouse=True)
+async def _cleanup_audit_events_at_session_end():
+    """Truncate audit_events after the test session.
+
+    Independently-committed rows (e.g. from auth.login_failed via
+    _emit_failed_login_independently) bypass per-test transaction rollback.
+    Without this fixture they accumulate across runs and can cause flakey
+    'multiple results found' assertions in tests that filter by event_type
+    alone.
+    """
+    yield
+    from sqlalchemy import text
+    from app.core.database import async_session as _factory
+    async with _factory() as s:
+        await s.execute(text("TRUNCATE audit_events RESTART IDENTITY CASCADE"))
+        await s.commit()
+
+
 @pytest_asyncio.fixture
 async def db_session():
     """Per-test transactional session; rolls back at teardown."""

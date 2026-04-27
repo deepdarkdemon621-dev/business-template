@@ -1,5 +1,6 @@
 import pytest
-from app.modules.audit.context import AuditContext, audit_context, get_context
+
+from app.modules.audit.context import audit_context, get_context
 
 
 def test_get_context_raises_when_unset():
