@@ -62,7 +62,7 @@ async def test_role_permissions_updated_stores_added_removed(db_session, db_audi
 
 async def test_login_failed_stores_reason_and_no_resource(db_session, anon_audit_ctx):
     await audit.login_failed(db_session, "x@y.com", "bad_password")
-    await db_session.commit()
+    await db_session.flush()
     ev = (await db_session.execute(select(AuditEvent).where(AuditEvent.event_type == "auth.login_failed"))).scalar_one()
     assert ev.actor_user_id is None
     assert str(ev.actor_ip) == "198.51.100.7"

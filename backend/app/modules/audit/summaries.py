@@ -1,3 +1,9 @@
+"""Server-rendered one-liners for audit log entries.
+
+Each event_type maps to a short human-readable summary used in the audit
+log viewer. Server-rendered (not client-side) so future i18n is a
+mechanical per-branch translation key swap, not a refactor.
+"""
 # backend/app/modules/audit/summaries.py
 from __future__ import annotations
 

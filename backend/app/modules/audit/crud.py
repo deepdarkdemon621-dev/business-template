@@ -8,6 +8,7 @@ from typing import Any
 from sqlalchemy import Select, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.errors import ProblemDetails
 from app.core.pagination import Page, PageQuery, paginate
 from app.modules.audit.models import AuditEvent
 from app.modules.audit.schemas import AuditEventFilters
@@ -48,7 +49,7 @@ async def list_events(
     stmt = select(AuditEvent)
     stmt = _apply_filters(stmt, filters)
     sort = pq.sort or "-occurred_at"
-    if sort in ("-occurred_at", None):
+    if sort == "-occurred_at":
         stmt = stmt.order_by(AuditEvent.occurred_at.desc(), AuditEvent.id.desc())
     elif sort == "occurred_at":
         stmt = stmt.order_by(AuditEvent.occurred_at.asc(), AuditEvent.id.asc())
@@ -57,7 +58,6 @@ async def list_events(
     elif sort == "id":
         stmt = stmt.order_by(AuditEvent.id.asc())
     else:
-        from app.core.errors import ProblemDetails
         raise ProblemDetails(code="audit.invalid-sort", status=400, detail=f"Invalid sort: {sort}")
     return await paginate(session, stmt, pq)
 

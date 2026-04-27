@@ -94,7 +94,7 @@ class AuditService:
             before=_strip_sensitive(before),
             after=_strip_sensitive(after),
             changes=_strip_sensitive(changes),
-            metadata_=_strip_sensitive(metadata),
+            metadata_=_strip_sensitive(metadata),  # DB col is event_metadata; Python attr is metadata_ (avoids Base.metadata clash)
         )
 
     # --- User mutations ----------------------------------------------
