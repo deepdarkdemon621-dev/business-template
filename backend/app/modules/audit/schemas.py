@@ -4,14 +4,14 @@ import uuid
 from datetime import datetime
 from typing import Any
 
-from pydantic import Field
+from pydantic import EmailStr, Field
 
 from app.core.schemas import BaseSchema
 
 
 class AuditActor(BaseSchema):
     id: uuid.UUID
-    email: str  # plain str: audit display must not fail on edge-case email domains
+    email: EmailStr
     name: str
 
 

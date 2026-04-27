@@ -48,7 +48,7 @@ async def db_audit_ctx(db_session: AsyncSession) -> AsyncGenerator[AuditContext]
     actor_id = uuid.uuid4()
     user = User(
         id=actor_id,
-        email=f"audit-actor-{actor_id}@test.invalid",
+        email=f"audit-actor-{actor_id}@example.com",
         password_hash="x",
         full_name="Audit Actor",
     )
