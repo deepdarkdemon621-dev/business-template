@@ -4,7 +4,7 @@ import uuid
 from datetime import datetime
 from typing import Any
 
-from sqlalchemy import Column, DateTime, ForeignKey, String
+from sqlalchemy import DateTime, ForeignKey, String
 from sqlalchemy.dialects.postgresql import INET, JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -30,4 +30,4 @@ class AuditEvent(Base):
     after: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
     changes: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
     # DB column is event_metadata because 'metadata' collides with Base.metadata
-    metadata_: Mapped[dict[str, Any] | None] = Column("event_metadata", JSONB, nullable=True)
+    metadata_: Mapped[dict[str, Any] | None] = mapped_column("event_metadata", JSONB, nullable=True)

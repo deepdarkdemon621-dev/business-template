@@ -405,7 +405,11 @@ class AuditEventDetailOut(AuditEventOut):
     before: dict[str, Any] | None = None
     after: dict[str, Any] | None = None
     changes: dict[str, Any] | None = None
-    metadata: dict[str, Any] | None = Field(default=None, alias="metadata")
+    metadata_: dict[str, Any] | None = Field(
+        default=None,
+        validation_alias="metadata_",
+        serialization_alias="metadata",
+    )
 
 
 class AuditEventFilters(BaseSchema):
