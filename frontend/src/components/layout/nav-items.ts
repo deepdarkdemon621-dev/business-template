@@ -9,4 +9,5 @@ export const NAV_ITEMS: NavItem[] = [
   { label: "用户管理", path: "/admin/users", requiredPermission: "user:list" },
   { label: "角色管理", path: "/admin/roles", requiredPermission: "role:list" },
   { label: "部门", path: "/admin/departments", requiredPermission: "department:read" },
+  { label: "审计日志", path: "/admin/audit", requiredPermission: "audit:list" },
 ];

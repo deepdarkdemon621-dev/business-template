@@ -15,6 +15,7 @@ import { UserEditPage } from "@/modules/user/UserEditPage";
 import { DepartmentListPage } from "@/modules/department/DepartmentListPage";
 import { RoleListPage } from "@/modules/rbac/RoleListPage";
 import { RoleEditPage } from "@/modules/rbac/RoleEditPage";
+import { AuditLogPage } from "@/modules/audit/AuditLogPage";
 
 export default function App() {
   return (
@@ -47,6 +48,7 @@ export default function App() {
               <Route path="/admin/roles/new" element={<RoleEditPage />} />
               <Route path="/admin/roles/:id" element={<RoleEditPage />} />
               <Route path="/admin/departments" element={<DepartmentListPage />} />
+              <Route path="/admin/audit" element={<AuditLogPage />} />
             </Route>
           </Routes>
         </PermissionsProvider>
