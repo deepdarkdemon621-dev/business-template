@@ -86,7 +86,7 @@
 
 **Files:**
 - Create: `backend/alembic/versions/0007_plan8_audit_log.py`
-- Test: `backend/tests/migrations/test_migration_0007.py` (create if not present)
+- Test: `backend/tests/migrations/test_0007_migration.py` (create if not present)
 
 - [ ] **Step 1: Write the migration**
 

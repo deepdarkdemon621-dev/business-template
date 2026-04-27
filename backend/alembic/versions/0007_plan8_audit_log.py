@@ -35,7 +35,7 @@ def upgrade() -> None:
             primary_key=True,
             server_default=sa.text("gen_random_uuid()"),
         ),
-        sa.Column("occurred_at", sa.DateTime(timezone=True), nullable=False),
+        sa.Column("occurred_at", sa.DateTime(timezone=True), nullable=False),  # no server_default: caller supplies
         sa.Column("event_type", sa.String(64), nullable=False),
         sa.Column("action", sa.String(32), nullable=False),
         sa.Column(
