@@ -33,6 +33,8 @@ os.environ["POSTGRES_DB"] = _m.group("db")
 os.environ.setdefault("SECRET_KEY", "x" * 40)
 os.environ.setdefault("APP_ENV", "test")
 
+import uuid  # noqa: E402
+
 import pytest  # noqa: E402
 import pytest_asyncio  # noqa: E402
 from fastapi.testclient import TestClient  # noqa: E402
@@ -50,6 +52,34 @@ _auth_limiter.enabled = False
 @pytest.fixture
 def client() -> TestClient:
     return TestClient(_app)
+
+
+@pytest_asyncio.fixture
+async def db_audit_ctx(db_session: AsyncSession):
+    """Async audit context that inserts a real User into the test DB.
+
+    Makes audit_context available for service-layer tests that call
+    AuditService directly and need a valid actor_user_id FK.
+    Available in all test modules via root conftest.
+    """
+    from app.modules.audit.context import AuditContext, audit_context
+    from app.modules.auth.models import User
+
+    actor_id = uuid.uuid4()
+    user = User(
+        id=actor_id,
+        email=f"audit-actor-{actor_id}@example.com",
+        password_hash="x",
+        full_name="Audit Actor",
+    )
+    db_session.add(user)
+    await db_session.flush()
+    ctx = AuditContext(actor_user_id=actor_id, actor_ip="10.0.0.4", actor_user_agent="pytest-agent")
+    token = audit_context.set(ctx)
+    try:
+        yield ctx
+    finally:
+        audit_context.reset(token)
 
 
 @pytest_asyncio.fixture(scope="session", autouse=True)
@@ -97,7 +127,8 @@ async def _cleanup_audit_events_at_session_end():
     alone.
     """
     yield
-    from sqlalchemy import text
+    from sqlalchemy import text  # noqa: PLC0415
+
     from app.core.database import async_session as _factory
     async with _factory() as s:
         await s.execute(text("TRUNCATE audit_events RESTART IDENTITY CASCADE"))

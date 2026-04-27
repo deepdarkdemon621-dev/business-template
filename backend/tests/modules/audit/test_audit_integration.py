@@ -146,3 +146,128 @@ async def test_logout_emits_audit_event(
 
     ev = await _get_audit_event_in_session(db_session, "auth.logout")
     assert ev is not None, "auth.logout event not found"
+
+
+# ---------------------------------------------------------------------------
+# Role audit tests
+# ---------------------------------------------------------------------------
+
+
+async def test_role_create_emits_event(
+    superadmin_token: tuple,
+    db_session: AsyncSession,
+) -> None:
+    """POST /roles writes role.created audit event."""
+    client, token = superadmin_token
+    res = await client.post(
+        "/api/v1/roles",
+        json={"code": "auditor_create_t9", "name": "Auditor T9"},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert res.status_code == 201, res.text
+    ev = (
+        await db_session.execute(
+            select(AuditEvent).where(
+                AuditEvent.event_type == "role.created",
+                AuditEvent.resource_label == "auditor_create_t9",
+            )
+        )
+    ).scalar_one()
+    assert ev.actor_user_id is not None
+    assert ev.after["code"] == "auditor_create_t9"
+
+
+async def test_role_update_emits_changes(
+    superadmin_token: tuple,
+    db_session: AsyncSession,
+) -> None:
+    """PATCH /roles/{id} writes role.updated audit event with field diff."""
+    client, token = superadmin_token
+    res = await client.post(
+        "/api/v1/roles",
+        json={"code": "ed1_t9", "name": "Old Name T9"},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert res.status_code == 201, res.text
+    role_id = res.json()["id"]
+    res = await client.patch(
+        f"/api/v1/roles/{role_id}",
+        json={"name": "New Name T9"},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert res.status_code == 200, res.text
+    ev = (
+        await db_session.execute(
+            select(AuditEvent).where(
+                AuditEvent.event_type == "role.updated",
+                AuditEvent.resource_label == "ed1_t9",
+            )
+        )
+    ).scalar_one()
+    assert ev.changes == {"name": ["Old Name T9", "New Name T9"]}
+
+
+async def test_role_permissions_update_emits_added_removed(
+    superadmin_token: tuple,
+    db_session: AsyncSession,
+) -> None:
+    """Replacing permissions writes role.permissions_updated with added/removed lists."""
+    client, token = superadmin_token
+    res = await client.post(
+        "/api/v1/roles",
+        json={
+            "code": "permtest_t9",
+            "name": "Perm Test T9",
+            "permissions": [{"permissionCode": "user:read", "scope": "global"}],
+        },
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert res.status_code == 201, res.text
+    role_id = res.json()["id"]
+    res = await client.patch(
+        f"/api/v1/roles/{role_id}",
+        json={"permissions": [{"permissionCode": "user:list", "scope": "global"}]},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert res.status_code == 200, res.text
+    ev = (
+        await db_session.execute(
+            select(AuditEvent).where(
+                AuditEvent.event_type == "role.permissions_updated",
+                AuditEvent.resource_label == "permtest_t9",
+            )
+        )
+    ).scalar_one()
+    added_codes = [a["permission_code"] for a in ev.metadata_["added"]]
+    removed_codes = [r["permission_code"] for r in ev.metadata_["removed"]]
+    assert "user:list" in added_codes
+    assert "user:read" in removed_codes
+
+
+async def test_role_delete_emits_before_snapshot(
+    superadmin_token: tuple,
+    db_session: AsyncSession,
+) -> None:
+    """DELETE /roles/{id} writes role.deleted with before-snapshot."""
+    client, token = superadmin_token
+    res = await client.post(
+        "/api/v1/roles",
+        json={"code": "tbd_t9", "name": "To Be Deleted T9"},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert res.status_code == 201, res.text
+    role_id = res.json()["id"]
+    res = await client.delete(
+        f"/api/v1/roles/{role_id}",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert res.status_code == 200, res.text
+    ev = (
+        await db_session.execute(
+            select(AuditEvent).where(
+                AuditEvent.event_type == "role.deleted",
+                AuditEvent.resource_label == "tbd_t9",
+            )
+        )
+    ).scalar_one()
+    assert ev.before["code"] == "tbd_t9"

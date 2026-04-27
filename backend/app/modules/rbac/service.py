@@ -5,22 +5,18 @@ Business operations on Role: create / update / delete + matrix diff.
 
 from __future__ import annotations
 
-import logging
-from typing import Any
-
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.errors import FieldError, ProblemDetails
 from app.core.guards import GuardViolationError
+from app.modules.audit.service import _diff_dict, _role_snapshot, audit
 from app.modules.rbac import crud
 from app.modules.rbac.models import Role
 from app.modules.rbac.schemas import (
     RoleCreateIn,
     RoleUpdateIn,
 )
-
-logger = logging.getLogger(__name__)
 
 
 def _guard_to_problem(e: GuardViolationError) -> ProblemDetails:
@@ -65,17 +61,7 @@ class RoleService:
                 detail=f"Role code '{payload.code}' already exists.",
             ) from e
 
-        logger.info(
-            "role.created",
-            extra={
-                "role_id": str(role.id),
-                "code": role.code,
-                "name": role.name,
-                "permissions": [
-                    {"code": p.permission_code, "scope": p.scope.value} for p in payload.permissions
-                ],
-            },
-        )
+        await audit.role_created(session, role)
         return role
 
     async def update(
@@ -92,13 +78,12 @@ class RoleService:
             except GuardViolationError as e:
                 raise _guard_to_problem(e) from e
 
-        metadata_changes: dict[str, Any] = {}
+        before_snap = _role_snapshot(role)
+
         if payload.code is not None and payload.code != role.code:
             role.code = payload.code
-            metadata_changes["code"] = payload.code
         if payload.name is not None and payload.name != role.name:
             role.name = payload.name
-            metadata_changes["name"] = payload.name
 
         matrix_diff: dict[str, list[str]] | None = None
         if payload.permissions is not None:
@@ -129,15 +114,16 @@ class RoleService:
                 detail=f"Role code '{payload.code}' already exists.",
             ) from e
 
-        if metadata_changes or (matrix_diff and any(matrix_diff.values())):
-            logger.info(
-                "role.updated",
-                extra={
-                    "role_id": str(role.id),
-                    "metadata_changes": metadata_changes,
-                    "matrix_diff": matrix_diff,
-                },
-            )
+        after_snap = _role_snapshot(role)
+        field_changes = _diff_dict(before_snap, after_snap)
+        if field_changes:
+            await audit.role_updated(session, role, changes=field_changes)
+
+        if matrix_diff and any(matrix_diff.values()):
+            added = [{"permission_code": c} for c in matrix_diff["added"]]
+            removed = [{"permission_code": c} for c in matrix_diff["removed"]]
+            await audit.role_permissions_updated(session, role, added=added, removed=removed)
+
         return role
 
     @staticmethod
@@ -165,14 +151,7 @@ class RoleService:
 
         role_code = role.code
         role_id = role.id
+        snap = _role_snapshot(role)
         deleted_user_roles = await crud.delete_role(session, role)
-
-        logger.info(
-            "role.deleted",
-            extra={
-                "role_id": str(role_id),
-                "code": role_code,
-                "deleted_user_roles": deleted_user_roles,
-            },
-        )
+        await audit.role_deleted(session, snap, role_id=role_id, code=role_code)
         return deleted_user_roles
