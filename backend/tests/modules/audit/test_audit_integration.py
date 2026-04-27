@@ -459,3 +459,75 @@ async def test_user_role_assign_revoke_emits_events(
         )
     ).scalar_one()
     assert revoke_ev.metadata_["role_code"] == "member"
+
+
+# ---------------------------------------------------------------------------
+# Department audit tests (Task 11)
+# ---------------------------------------------------------------------------
+
+
+async def test_department_create_update_delete_events(
+    superadmin_token: tuple,
+    db_session: AsyncSession,
+) -> None:
+    """POST/PATCH/DELETE /departments emit department.created/updated/deleted events."""
+    from app.modules.rbac.models import Department
+
+    client, token = superadmin_token
+
+    # Find the seeded root department (no parent)
+    root = (
+        await db_session.execute(
+            select(Department).where(Department.parent_id.is_(None))
+        )
+    ).scalar_one()
+
+    # --- Create ---
+    res = await client.post(
+        "/api/v1/departments",
+        json={"name": "Dept T11", "parentId": str(root.id)},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert res.status_code == 201, res.text
+    dept_id = res.json()["id"]
+
+    ev_c = (
+        await db_session.execute(
+            select(AuditEvent).where(
+                AuditEvent.event_type == "department.created",
+                AuditEvent.resource_label == "Dept T11",
+            )
+        )
+    ).scalar_one()
+    assert ev_c.after["name"] == "Dept T11"
+
+    # --- Update ---
+    await client.patch(
+        f"/api/v1/departments/{dept_id}",
+        json={"name": "Dept T11 Renamed"},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    ev_u = (
+        await db_session.execute(
+            select(AuditEvent).where(
+                AuditEvent.event_type == "department.updated",
+                AuditEvent.resource_label == "Dept T11 Renamed",
+            )
+        )
+    ).scalar_one()
+    assert ev_u.changes == {"name": ["Dept T11", "Dept T11 Renamed"]}
+
+    # --- Delete (soft delete) ---
+    await client.delete(
+        f"/api/v1/departments/{dept_id}",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    ev_d = (
+        await db_session.execute(
+            select(AuditEvent).where(
+                AuditEvent.event_type == "department.deleted",
+                AuditEvent.resource_label == "Dept T11 Renamed",
+            )
+        )
+    ).scalar_one()
+    assert ev_d.before["name"] == "Dept T11 Renamed"

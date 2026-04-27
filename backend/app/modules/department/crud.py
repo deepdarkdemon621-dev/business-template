@@ -8,6 +8,7 @@ from sqlalchemy import Select, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.errors import ProblemDetails
+from app.modules.audit.service import _dept_snapshot, _diff_dict, audit
 from app.modules.auth.models import User
 from app.modules.department.schemas import DepartmentCreateIn, DepartmentUpdateIn
 from app.modules.rbac.models import Department
@@ -54,14 +55,20 @@ async def create_department(session: AsyncSession, payload: DepartmentCreateIn) 
     )
     session.add(d)
     await session.flush()
+    await audit.department_created(session, d)
     return d
 
 
 async def update_department(
     session: AsyncSession, target: Department, payload: DepartmentUpdateIn
 ) -> Department:
+    before = _dept_snapshot(target)
     target.name = payload.name
     await session.flush()
+    after = _dept_snapshot(target)
+    changes = _diff_dict(before, after)
+    if changes:
+        await audit.department_updated(session, target, changes=changes)
     return target
 
 
@@ -72,8 +79,10 @@ async def soft_delete_department(
     # may raise GuardViolationError which the router translates to 409.
     for guard in getattr(Department, "__guards__", {}).get("delete", []):
         await guard.check(session, target, actor=actor)
+    snap = _dept_snapshot(target)
     target.is_active = False
     await session.flush()
+    await audit.department_deleted(session, snap, dept_id=target.id, name=target.name)
 
 
 def build_tree_stmt(
