@@ -312,3 +312,150 @@ async def test_role_delete_emits_before_snapshot(
         )
     ).scalar_one()
     assert ev.before["code"] == "tbd_t9"
+
+
+# ---------------------------------------------------------------------------
+# User audit tests (Task 10)
+# ---------------------------------------------------------------------------
+
+
+async def test_user_create_emits_event(
+    superadmin_token: tuple,
+    db_session: AsyncSession,
+) -> None:
+    """POST /users writes user.created with no password fields in after-snapshot."""
+    client, token = superadmin_token
+    res = await client.post(
+        "/api/v1/users",
+        json={"email": "new_t10@x.com", "fullName": "N T10", "password": "Test12345!"},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert res.status_code == 201, res.text
+    ev = (
+        await db_session.execute(
+            select(AuditEvent).where(
+                AuditEvent.event_type == "user.created",
+                AuditEvent.resource_label == "new_t10@x.com",
+            )
+        )
+    ).scalar_one()
+    assert ev.actor_user_id is not None
+    assert "password" not in (ev.after or {})
+    assert "password_hash" not in (ev.after or {})
+
+
+async def test_user_update_only_changed_fields(
+    superadmin_token: tuple,
+    db_session: AsyncSession,
+) -> None:
+    """PATCH /users/{id} writes user.updated with only the changed field diff."""
+    client, token = superadmin_token
+    res = await client.post(
+        "/api/v1/users",
+        json={"email": "upd_t10@x.com", "fullName": "Old T10", "password": "Test12345!"},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert res.status_code == 201, res.text
+    user_id = res.json()["id"]
+    res = await client.patch(
+        f"/api/v1/users/{user_id}",
+        json={"fullName": "New T10"},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert res.status_code == 200, res.text
+    ev = (
+        await db_session.execute(
+            select(AuditEvent).where(
+                AuditEvent.event_type == "user.updated",
+                AuditEvent.resource_label == "upd_t10@x.com",
+            )
+        )
+    ).scalar_one()
+    assert list(ev.changes.keys()) == ["full_name"]
+
+
+async def test_user_delete_snapshot(
+    superadmin_token: tuple,
+    db_session: AsyncSession,
+) -> None:
+    """DELETE /users/{id} writes user.deleted with before-snapshot (is_active=True)."""
+    client, token = superadmin_token
+    res = await client.post(
+        "/api/v1/users",
+        json={"email": "tbd_t10@x.com", "fullName": "T T10", "password": "Test12345!"},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert res.status_code == 201, res.text
+    user_id = res.json()["id"]
+    res = await client.delete(
+        f"/api/v1/users/{user_id}",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert res.status_code == 204, res.text
+    ev = (
+        await db_session.execute(
+            select(AuditEvent).where(
+                AuditEvent.event_type == "user.deleted",
+                AuditEvent.resource_label == "tbd_t10@x.com",
+            )
+        )
+    ).scalar_one()
+    assert ev.before["email"] == "tbd_t10@x.com"
+    assert ev.before["is_active"] is True
+
+
+async def test_user_role_assign_revoke_emits_events(
+    superadmin_token: tuple,
+    db_session: AsyncSession,
+) -> None:
+    """POST/DELETE /users/{id}/roles/{role_id} emit user.role_assigned / user.role_revoked."""
+    from sqlalchemy import select as _select
+
+    from app.modules.rbac.models import Role
+
+    client, token = superadmin_token
+    # Create user
+    res = await client.post(
+        "/api/v1/users",
+        json={"email": "role_t10@x.com", "fullName": "R T10", "password": "Test12345!"},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert res.status_code == 201, res.text
+    user_id = res.json()["id"]
+
+    # Look up the seeded 'member' role id
+    role_id = str(
+        (await db_session.execute(_select(Role).where(Role.code == "member"))).scalar_one().id
+    )
+
+    # Assign role
+    res = await client.post(
+        f"/api/v1/users/{user_id}/roles/{role_id}",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert res.status_code == 204, res.text
+    assign_ev = (
+        await db_session.execute(
+            select(AuditEvent).where(
+                AuditEvent.event_type == "user.role_assigned",
+                AuditEvent.resource_label == "role_t10@x.com",
+            )
+        )
+    ).scalar_one()
+    assert assign_ev.metadata_["role_code"] == "member"
+
+    # Revoke role
+    res = await client.delete(
+        f"/api/v1/users/{user_id}/roles/{role_id}",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert res.status_code == 204, res.text
+    revoke_ev = (
+        await db_session.execute(
+            select(AuditEvent).where(
+                AuditEvent.event_type == "user.role_revoked",
+                AuditEvent.resource_label == "role_t10@x.com",
+            )
+        )
+    ).scalar_one()
+    assert revoke_ev.metadata_["role_code"] == "member"

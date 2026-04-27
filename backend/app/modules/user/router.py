@@ -17,6 +17,7 @@ from app.core.permissions import (
     load_in_scope,
     require_perm,
 )
+from app.modules.audit.context import bind_audit_context
 from app.modules.auth.models import User
 from app.modules.rbac.models import Department, Role
 from app.modules.user.crud import build_list_users_stmt, get_roles_for_user
@@ -109,7 +110,7 @@ def _guard_to_problem(e: GuardViolationError) -> ProblemDetails:
     "/users",
     response_model=UserOut,
     status_code=201,
-    dependencies=[Depends(require_perm("user:create"))],
+    dependencies=[Depends(require_perm("user:create")), Depends(bind_audit_context)],
 )
 async def create_user_endpoint(
     payload: UserCreateIn,
@@ -125,7 +126,7 @@ async def create_user_endpoint(
 @router.patch(
     "/users/{user_id}",
     response_model=UserOut,
-    dependencies=[Depends(require_perm("user:update"))],
+    dependencies=[Depends(require_perm("user:update")), Depends(bind_audit_context)],
 )
 async def update_user_endpoint(
     user_id: uuid.UUID,
@@ -147,7 +148,7 @@ async def update_user_endpoint(
 @router.delete(
     "/users/{user_id}",
     status_code=204,
-    dependencies=[Depends(require_perm("user:delete"))],
+    dependencies=[Depends(require_perm("user:delete")), Depends(bind_audit_context)],
 )
 async def delete_user_endpoint(
     user_id: uuid.UUID,
@@ -167,7 +168,7 @@ async def delete_user_endpoint(
 @router.post(
     "/users/{user_id}/roles/{role_id}",
     status_code=status.HTTP_204_NO_CONTENT,
-    dependencies=[Depends(require_perm("user:assign"))],
+    dependencies=[Depends(require_perm("user:assign")), Depends(bind_audit_context)],
 )
 async def assign_role_endpoint(
     user_id: uuid.UUID,
@@ -187,7 +188,7 @@ async def assign_role_endpoint(
 @router.delete(
     "/users/{user_id}/roles/{role_id}",
     status_code=status.HTTP_204_NO_CONTENT,
-    dependencies=[Depends(require_perm("user:assign"))],
+    dependencies=[Depends(require_perm("user:assign")), Depends(bind_audit_context)],
 )
 async def revoke_role_endpoint(
     user_id: uuid.UUID,
