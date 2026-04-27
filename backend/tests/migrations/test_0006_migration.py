@@ -161,8 +161,11 @@ async def test_downgrade_reverses_migration() -> None:
     # Always restore to head, regardless of how this test exits
     # (assertion failure, subprocess error, etc.). Otherwise the DB stays
     # downgraded and cascades into later migration tests.
+    #
+    # Use the absolute revision target (NOT `-1`) so this test continues to
+    # downgrade the *0006* boundary even after newer revisions land on top.
     try:
-        run(["downgrade", "-1"])
+        run(["downgrade", "0005_plan6_dept_scope_value"])
         await _inspect_downgrade_state()
     finally:
         with contextlib.suppress(subprocess.CalledProcessError):
