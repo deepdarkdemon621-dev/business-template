@@ -5,14 +5,20 @@ from collections.abc import AsyncGenerator, Generator
 
 import pytest
 import pytest_asyncio
+from httpx import AsyncClient
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.auth import hash_password
 from app.modules.audit.context import AuditContext, audit_context
 from app.modules.auth.models import User
+from app.modules.rbac.models import Role, UserRole
+from tests.modules.rbac.conftest import member_token  # noqa: F401
+from tests.modules.user.conftest import login
 
 
 @pytest.fixture
-def audit_ctx() -> Generator[AuditContext, None, None]:
+def audit_ctx() -> Generator[AuditContext]:
     """Sync audit context with a random actor_user_id.
 
     NOTE: Only use this fixture in tests that do NOT write to the DB (e.g.
@@ -33,7 +39,7 @@ def audit_ctx() -> Generator[AuditContext, None, None]:
 
 
 @pytest_asyncio.fixture
-async def db_audit_ctx(db_session: AsyncSession) -> AsyncGenerator[AuditContext, None]:
+async def db_audit_ctx(db_session: AsyncSession) -> AsyncGenerator[AuditContext]:
     """Async audit context that inserts a real User into the test DB.
 
     Use this in async tests that write AuditEvent rows so the FK
@@ -57,10 +63,29 @@ async def db_audit_ctx(db_session: AsyncSession) -> AsyncGenerator[AuditContext,
 
 
 @pytest.fixture
-def anon_audit_ctx() -> Generator[AuditContext, None, None]:
+def anon_audit_ctx() -> Generator[AuditContext]:
     ctx = AuditContext(actor_user_id=None, actor_ip="198.51.100.7", actor_user_agent="anon-ua")
     token = audit_context.set(ctx)
     try:
         yield ctx
     finally:
         audit_context.reset(token)
+
+
+@pytest_asyncio.fixture
+async def superadmin_token(
+    client_with_db: AsyncClient, db_session: AsyncSession
+) -> tuple[AsyncClient, str]:
+    """User assigned the seeded 'superadmin' role (bypasses all permission checks)."""
+    role = (await db_session.execute(select(Role).where(Role.code == "superadmin"))).scalar_one()
+    u = User(
+        email="audit-superadmin@ex.com",
+        password_hash=hash_password("pw-aaa111"),
+        full_name="Audit Superadmin",
+    )
+    db_session.add(u)
+    await db_session.flush()
+    db_session.add(UserRole(user_id=u.id, role_id=role.id))
+    await db_session.commit()
+    token = await login(client_with_db, "audit-superadmin@ex.com", "pw-aaa111")
+    return client_with_db, token
