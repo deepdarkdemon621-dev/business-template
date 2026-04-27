@@ -2,11 +2,11 @@ import { useCallback, useState } from "react";
 import { Eye } from "lucide-react";
 import { DataTable, type ColumnDef } from "@/components/table/DataTable";
 import { Button } from "@/components/ui/button";
-import { DateRangePicker } from "@/components/ui/date-range-picker";
 import type { PageQuery } from "@/lib/pagination";
 import { listAuditEvents } from "./api";
 import type { AuditEvent, AuditFilters } from "./types";
 import { AuditEventDetail } from "./components/AuditEventDetail";
+import { AuditFilterBar } from "./components/AuditFilterBar";
 
 const EVENT_PILL: Record<string, string> = {
   create: "bg-green-100 text-green-900",
@@ -88,39 +88,16 @@ export function AuditLogPage() {
     [filters],
   );
 
-  const fromDate = filters.occurredFrom
-    ? new Date(filters.occurredFrom)
-    : undefined;
-  const toDate = filters.occurredTo ? new Date(filters.occurredTo) : undefined;
-
   return (
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-semibold">Audit log</h1>
       </div>
-      <div className="flex items-center gap-2 flex-wrap">
-        <DateRangePicker
-          value={{ from: fromDate, to: toDate }}
-          onChange={(v) =>
-            setFilters((f) => ({
-              ...f,
-              occurredFrom: v.from?.toISOString(),
-              occurredTo: v.to?.toISOString(),
-            }))
-          }
-          placeholder="Date range"
-        />
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => setFilters(defaultFilters())}
-        >
-          Reset filters
-        </Button>
-        {/* Event type, action, actor, resource filters planned for Task 16b.
-            Backend already supports all of them via query params; this bar ships
-            date range + reset only for V1. */}
-      </div>
+      <AuditFilterBar
+        value={filters}
+        onChange={setFilters}
+        onReset={() => setFilters(defaultFilters())}
+      />
       <DataTable<AuditEvent>
         columns={columns}
         fetcher={fetcher}
