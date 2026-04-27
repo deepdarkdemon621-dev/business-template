@@ -33,7 +33,11 @@ def render_summary(event_type: str, action: str, resource_label: str | None, met
         case "role.permissions_updated":
             added = len(md.get("added", []))
             removed = len(md.get("removed", []))
-            return f"Updated permissions on role '{rl}' (+{added}/-{removed})"
+            scope_changed = len(md.get("scope_changed", []))
+            parts = [f"+{added}", f"-{removed}"]
+            if scope_changed:
+                parts.append(f"~{scope_changed}")
+            return f"Updated permissions on role '{rl}' ({'/'.join(parts)})"
         case "user.role_assigned":
             return f"Assigned role '{md.get('role_code', '')}' to user '{rl}'"
         case "user.role_revoked":

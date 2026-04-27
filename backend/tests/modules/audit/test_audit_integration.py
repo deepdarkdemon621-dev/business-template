@@ -244,6 +244,47 @@ async def test_role_permissions_update_emits_added_removed(
     assert "user:read" in removed_codes
 
 
+async def test_role_permissions_scope_only_change_emits_event(
+    superadmin_token: tuple,
+    db_session: AsyncSession,
+) -> None:
+    """A scope-only change (same code, new scope) emits role.permissions_updated with scope_changed."""
+    client, token = superadmin_token
+    res = await client.post(
+        "/api/v1/roles",
+        json={
+            "code": "scope_test_t9",
+            "name": "Scope Test T9",
+            "permissions": [{"permissionCode": "user:read", "scope": "global"}],
+        },
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert res.status_code == 201, res.text
+    role_id = res.json()["id"]
+    res = await client.patch(
+        f"/api/v1/roles/{role_id}",
+        json={"permissions": [{"permissionCode": "user:read", "scope": "dept_tree"}]},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert res.status_code == 200, res.text
+    ev = (
+        await db_session.execute(
+            select(AuditEvent).where(
+                AuditEvent.event_type == "role.permissions_updated",
+                AuditEvent.resource_label == "scope_test_t9",
+            )
+        )
+    ).scalar_one()
+    sc = ev.metadata_["scope_changed"]
+    assert len(sc) == 1
+    assert sc[0]["permission_code"] == "user:read"
+    assert sc[0]["from_scope"] == "global"
+    assert sc[0]["to_scope"] == "dept_tree"
+    # added/removed must be empty for a scope-only change
+    assert ev.metadata_["added"] == []
+    assert ev.metadata_["removed"] == []
+
+
 async def test_role_delete_emits_before_snapshot(
     superadmin_token: tuple,
     db_session: AsyncSession,

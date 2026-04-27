@@ -150,13 +150,18 @@ class AuditService:
         )
 
     async def role_permissions_updated(
-        self, session: AsyncSession, role: Any, added: list[dict[str, str]], removed: list[dict[str, str]]
+        self,
+        session: AsyncSession,
+        role: Any,
+        added: list[dict[str, str]],
+        removed: list[dict[str, str]],
+        scope_changed: list[dict[str, str]] | None = None,
     ) -> AuditEvent:
         return await self._record(
             session,
             event_type="role.permissions_updated", action="update",
             resource_type="role", resource_id=role.id, resource_label=role.code,
-            metadata={"added": added, "removed": removed},
+            metadata={"added": added, "removed": removed, "scope_changed": scope_changed or []},
         )
 
     async def user_role_assigned(

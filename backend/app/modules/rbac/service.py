@@ -85,7 +85,7 @@ class RoleService:
         if payload.name is not None and payload.name != role.name:
             role.name = payload.name
 
-        matrix_diff: dict[str, list[str]] | None = None
+        matrix_diff: dict[str, list[dict[str, str]]] | None = None
         if payload.permissions is not None:
             try:
                 matrix_diff = await crud.replace_role_permissions(
@@ -119,10 +119,14 @@ class RoleService:
         if field_changes:
             await audit.role_updated(session, role, changes=field_changes)
 
-        if matrix_diff and any(matrix_diff.values()):
-            added = [{"permission_code": c} for c in matrix_diff["added"]]
-            removed = [{"permission_code": c} for c in matrix_diff["removed"]]
-            await audit.role_permissions_updated(session, role, added=added, removed=removed)
+        if matrix_diff and (matrix_diff["added"] or matrix_diff["removed"] or matrix_diff["scope_changed"]):
+            await audit.role_permissions_updated(
+                session,
+                role,
+                added=matrix_diff["added"],
+                removed=matrix_diff["removed"],
+                scope_changed=matrix_diff["scope_changed"],
+            )
 
         return role
 

@@ -13,9 +13,23 @@ def test_user_updated_lists_changed_fields():
 
 
 def test_role_permissions_updated_shows_counts():
-    md = {"added": [{"permission_code": "a", "scope": "global"}], "removed": [{"permission_code": "b", "scope": "own"}, {"permission_code": "c", "scope": "dept"}]}
+    md = {
+        "added": [{"permission_code": "a", "scope": "global"}],
+        "removed": [{"permission_code": "b", "scope": "own"}, {"permission_code": "c", "scope": "dept"}],
+        "scope_changed": [],
+    }
     out = render_summary("role.permissions_updated", "update", "auditor", md, None)
     assert "+1" in out and "-2" in out
+
+
+def test_role_permissions_updated_shows_scope_changed():
+    md = {
+        "added": [],
+        "removed": [],
+        "scope_changed": [{"permission_code": "user:read", "from_scope": "global", "to_scope": "dept_tree"}],
+    }
+    out = render_summary("role.permissions_updated", "update", "auditor", md, None)
+    assert "~1" in out
 
 
 def test_login_failed_shows_reason_and_email():
