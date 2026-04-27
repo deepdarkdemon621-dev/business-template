@@ -16,6 +16,7 @@ from app.core.database import get_session
 from app.core.pagination import Page, PageQuery, paginate
 from app.core.permissions import current_user_dep, public_endpoint
 from app.core.redis import get_redis
+from app.modules.audit.context import bind_audit_context
 from app.modules.auth.models import UserSession
 from app.modules.auth.schemas import (
     LoginRequest,
@@ -70,7 +71,7 @@ def _clear_refresh_cookie(response: Response) -> None:
 # ---------------------------------------------------------------------------
 
 
-@router.post("/auth/login", response_model=LoginResponse, dependencies=[Depends(public_endpoint)])
+@router.post("/auth/login", response_model=LoginResponse, dependencies=[Depends(public_endpoint), Depends(bind_audit_context)])
 @limiter.limit("20/minute")
 async def login(
     request: Request,
@@ -142,7 +143,7 @@ async def refresh(
     )
 
 
-@router.post("/auth/logout", status_code=status.HTTP_204_NO_CONTENT)
+@router.post("/auth/logout", status_code=status.HTTP_204_NO_CONTENT, dependencies=[Depends(bind_audit_context)])
 async def logout(
     response: Response,
     current_user=Depends(current_user_dep),
@@ -163,7 +164,7 @@ async def get_profile(current_user=Depends(current_user_dep)) -> UserRead:
     return UserRead.model_validate(current_user)
 
 
-@router.put("/me/password", status_code=status.HTTP_204_NO_CONTENT)
+@router.put("/me/password", status_code=status.HTTP_204_NO_CONTENT, dependencies=[Depends(bind_audit_context)])
 async def change_password(
     body: PasswordChangeRequest,
     current_user=Depends(current_user_dep),
@@ -214,7 +215,7 @@ async def list_sessions(
     )
 
 
-@router.delete("/me/sessions/{jti}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete("/me/sessions/{jti}", status_code=status.HTTP_204_NO_CONTENT, dependencies=[Depends(bind_audit_context)])
 async def revoke_session(
     jti: uuid.UUID,
     current_user=Depends(current_user_dep),
@@ -236,7 +237,7 @@ async def revoke_session(
 @router.post(
     "/auth/password-reset/request",
     status_code=status.HTTP_200_OK,
-    dependencies=[Depends(public_endpoint)],
+    dependencies=[Depends(public_endpoint), Depends(bind_audit_context)],
 )
 @limiter.limit("5/minute")
 async def request_password_reset(
@@ -253,7 +254,7 @@ async def request_password_reset(
 @router.post(
     "/auth/password-reset/confirm",
     status_code=status.HTTP_204_NO_CONTENT,
-    dependencies=[Depends(public_endpoint)],
+    dependencies=[Depends(public_endpoint), Depends(bind_audit_context)],
 )
 async def confirm_password_reset(
     body: PasswordResetConfirmRequest,

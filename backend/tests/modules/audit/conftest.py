@@ -89,3 +89,29 @@ async def superadmin_token(
     await db_session.commit()
     token = await login(client_with_db, "audit-superadmin@ex.com", "pw-aaa111")
     return client_with_db, token
+
+
+@pytest_asyncio.fixture
+async def seeded_user_password(
+    client_with_db: AsyncClient, db_session: AsyncSession
+) -> tuple[str, str]:
+    """Plain user (no role), returns (email, plaintext_password). Use for login tests."""
+    email = "audit-loginsubject@example.com"
+    password = "test-password-aaa111"
+    u = User(
+        email=email,
+        password_hash=hash_password(password),
+        full_name="Login Subject",
+    )
+    db_session.add(u)
+    await db_session.commit()
+    return (email, password)
+
+
+@pytest_asyncio.fixture
+async def logged_in_user_token(
+    client_with_db: AsyncClient, seeded_user_password: tuple[str, str]
+) -> str:
+    """Returns just the access token for a freshly-created plain user."""
+    email, password = seeded_user_password
+    return await login(client_with_db, email, password)

@@ -23,8 +23,16 @@ def redis():
     return AsyncMock()
 
 
+@pytest.fixture
+def mock_audit():
+    """Patch the audit singleton in auth.service so unit tests don't need audit_context."""
+    m = AsyncMock()
+    with patch("app.modules.auth.service.audit", m):
+        yield m
+
+
 @pytest.mark.asyncio
-async def test_login_success(svc, db, redis):
+async def test_login_success(svc, db, redis, mock_audit):
     redis.get.return_value = "0"
     user = MagicMock(
         id=uuid.uuid4(),
@@ -57,12 +65,17 @@ async def test_login_success(svc, db, redis):
     assert result["access_token"] == "jwt-tok"
     assert result["user"] is user
     mock_clear.assert_awaited_once()
+    mock_audit.login_succeeded.assert_awaited_once()
 
 
 @pytest.mark.asyncio
 async def test_login_locked_out(svc, db, redis):
     redis.get.return_value = "5"
-    with pytest.raises(ProblemDetails) as ei:
+    with (
+        patch("app.modules.auth.service._emit_failed_login_independently") as mock_emit,
+        pytest.raises(ProblemDetails) as ei,
+    ):
+        mock_emit.return_value = None
         await svc.login(
             db=db,
             redis=redis,
@@ -84,7 +97,9 @@ async def test_login_bad_password(svc, db, redis):
         patch("app.modules.auth.service.verify_password", return_value=False),
         patch("app.modules.auth.service.verify_captcha", return_value=True),
         patch("app.modules.auth.service.record_failed_login") as mock_record,
+        patch("app.modules.auth.service._emit_failed_login_independently") as mock_emit,
     ):
+        mock_emit.return_value = None
         mock_crud.get_user_by_email = AsyncMock(return_value=user)
         with pytest.raises(ProblemDetails) as ei:
             await svc.login(
@@ -106,7 +121,9 @@ async def test_login_user_not_found(svc, db, redis):
     with (
         patch("app.modules.auth.service.crud") as mock_crud,
         patch("app.modules.auth.service.verify_captcha", return_value=True),
+        patch("app.modules.auth.service._emit_failed_login_independently") as mock_emit,
     ):
+        mock_emit.return_value = None
         mock_crud.get_user_by_email = AsyncMock(return_value=None)
         with pytest.raises(ProblemDetails) as ei:
             await svc.login(
@@ -155,18 +172,24 @@ async def test_refresh_denylisted(svc, db, redis):
 
 
 @pytest.mark.asyncio
-async def test_logout(svc, db, redis):
+async def test_logout(svc, db, redis, mock_audit):
     jti = uuid.uuid4()
-    session_obj = MagicMock(id=jti, expires_at=datetime.now(tz=UTC) + timedelta(days=5))
+    session_obj = MagicMock(
+        id=jti,
+        user_id=uuid.uuid4(),
+        expires_at=datetime.now(tz=UTC) + timedelta(days=5),
+    )
     with patch("app.modules.auth.service.crud") as mock_crud:
         mock_crud.get_session_by_id = AsyncMock(return_value=session_obj)
         mock_crud.delete_session = AsyncMock()
+        db.get = AsyncMock(return_value=MagicMock(id=session_obj.user_id, email="x@y.com"))
         await svc.logout(db=db, redis=redis, jti=str(jti))
     redis.set.assert_awaited_once()
+    mock_audit.logout.assert_awaited_once()
 
 
 @pytest.mark.asyncio
-async def test_change_password_success(svc, db):
+async def test_change_password_success(svc, db, mock_audit):
     user = MagicMock(password_hash="$argon2id$...")
     with (
         patch("app.modules.auth.service.verify_password", return_value=True),
@@ -178,6 +201,7 @@ async def test_change_password_success(svc, db):
             db=db, user=user, current_password="old", new_password="NewPass1234"
         )
     mock_crud.update_user_password.assert_awaited_once()
+    mock_audit.password_changed.assert_awaited_once()
 
 
 @pytest.mark.asyncio
@@ -190,7 +214,7 @@ async def test_change_password_wrong_current(svc, db):
 
 
 @pytest.mark.asyncio
-async def test_request_password_reset(svc, db, redis):
+async def test_request_password_reset(svc, db, redis, mock_audit):
     user = MagicMock(id=uuid.uuid4())
     with (
         patch("app.modules.auth.service.crud") as mock_crud,
@@ -200,6 +224,7 @@ async def test_request_password_reset(svc, db, redis):
         await svc.request_password_reset(db=db, redis=redis, email="a@b.com")
     redis.set.assert_awaited_once()
     mock_email.assert_awaited_once()
+    mock_audit.password_reset_requested.assert_awaited_once()
 
 
 @pytest.mark.asyncio
@@ -211,7 +236,7 @@ async def test_request_password_reset_unknown_email(svc, db, redis):
 
 
 @pytest.mark.asyncio
-async def test_confirm_password_reset(svc, db, redis):
+async def test_confirm_password_reset(svc, db, redis, mock_audit):
     user_id = str(uuid.uuid4())
     redis.get.return_value = user_id
     user = MagicMock(id=user_id)
@@ -229,6 +254,7 @@ async def test_confirm_password_reset(svc, db, redis):
         )
     mock_crud.update_user_password.assert_awaited_once()
     redis.delete.assert_awaited_once()
+    mock_audit.password_reset_consumed.assert_awaited_once()
 
 
 @pytest.mark.asyncio
@@ -249,14 +275,16 @@ async def test_list_sessions(svc, db):
 
 
 @pytest.mark.asyncio
-async def test_revoke_session(svc, db, redis):
+async def test_revoke_session(svc, db, redis, mock_audit):
     jti = uuid.uuid4()
-    session_obj = MagicMock(id=jti, expires_at=datetime.now(tz=UTC) + timedelta(days=3))
+    session_obj = MagicMock(id=jti, user_id=uuid.uuid4(), expires_at=datetime.now(tz=UTC) + timedelta(days=3))
     with patch("app.modules.auth.service.crud") as mock_crud:
         mock_crud.get_session_by_id = AsyncMock(return_value=session_obj)
         mock_crud.delete_session = AsyncMock()
+        db.get = AsyncMock(return_value=MagicMock(id=session_obj.user_id, email="a@b.com"))
         await svc.revoke_session(db=db, redis=redis, jti=jti, current_jti=uuid.uuid4())
     redis.set.assert_awaited_once()
+    mock_audit.session_revoked.assert_awaited_once()
 
 
 @pytest.mark.asyncio

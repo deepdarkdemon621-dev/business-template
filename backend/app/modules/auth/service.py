@@ -21,11 +21,23 @@ from app.core.auth import (
     verify_password,
 )
 from app.core.config import get_settings
+from app.core.database import async_session as _audit_session_factory
 from app.core.email import send_email
 from app.core.errors import ProblemDetails
+from app.modules.audit.service import audit
 from app.modules.auth import crud
 
 _settings = get_settings()
+
+
+async def _emit_failed_login_independently(email: str, reason: str) -> None:
+    """Persist auth.login_failed in its own transaction so the raise that
+    follows doesn't roll it back. The contextvar carries IP/UA across.
+    """
+    async with _audit_session_factory() as fresh:
+        await audit.login_failed(fresh, email, reason)
+        await fresh.commit()
+
 
 _INVALID_CREDENTIALS = ProblemDetails(
     code="auth.invalid-credentials",
@@ -55,6 +67,7 @@ class AuthService:
         ip_address: str | None,
     ) -> dict:
         if await is_locked_out(redis, email):
+            await _emit_failed_login_independently(email, "locked")
             raise ProblemDetails(
                 code="auth.locked-out",
                 status=429,
@@ -70,16 +83,24 @@ class AuthService:
 
         user = await crud.get_user_by_email(db, email)
         if user is None:
+            await _emit_failed_login_independently(email, "unknown_email")
             raise _INVALID_CREDENTIALS
 
         if not verify_password(password, user.password_hash):
             await record_failed_login(redis, email)
+            await _emit_failed_login_independently(email, "bad_password")
             raise _INVALID_CREDENTIALS
 
         if not user.is_active:
+            await _emit_failed_login_independently(email, "disabled_account")
             raise _INVALID_CREDENTIALS
 
         await clear_failed_logins(redis, email)
+
+        user.last_login_at = datetime.now(UTC)
+        await db.flush()
+        await db.refresh(user)
+        await audit.login_succeeded(db, user)
 
         user_session = await crud.create_session(
             db,
@@ -182,6 +203,11 @@ class AuthService:
     ) -> None:
         session_obj = await crud.get_session_by_id(db, uuid.UUID(jti))
         if session_obj:
+            from app.modules.auth.models import User
+
+            user = await db.get(User, session_obj.user_id)
+            if user is not None:
+                await audit.logout(db, user)
             remaining = int((session_obj.expires_at - datetime.now(tz=UTC)).total_seconds())
             await denylist_token(redis, jti, ttl_seconds=max(remaining, 1))
             await crud.delete_session(db, session_obj.id)
@@ -202,6 +228,7 @@ class AuthService:
             )
         new_hash = hash_password(new_password)
         await crud.update_user_password(db, user, new_hash)
+        await audit.password_changed(db, user)
 
     async def request_password_reset(
         self,
@@ -217,6 +244,7 @@ class AuthService:
         await redis.set(f"reset:{token}", str(user.id), ex=3600)
         origins = _settings.allowed_origins.split(",")
         reset_link = f"{origins[0].strip()}/password-reset/confirm?token={token}"
+        await audit.password_reset_requested(db, user)
         await send_email(
             to=email,
             subject="Password Reset",
@@ -254,6 +282,7 @@ class AuthService:
         new_hash = hash_password(new_password)
         await crud.update_user_password(db, user, new_hash)
         await redis.delete(f"reset:{token}")
+        await audit.password_reset_consumed(db, user)
         sessions = await crud.delete_user_sessions(db, user.id)
         now = datetime.now(tz=UTC)
         for s in sessions:
@@ -293,3 +322,8 @@ class AuthService:
         remaining = int((session_obj.expires_at - datetime.now(tz=UTC)).total_seconds())
         await denylist_token(redis, str(jti), ttl_seconds=max(remaining, 1))
         await crud.delete_session(db, jti)
+        from app.modules.auth.models import User
+
+        user = await db.get(User, session_obj.user_id)
+        if user is not None:
+            await audit.session_revoked(db, user, session_id=jti, by_admin=False)
