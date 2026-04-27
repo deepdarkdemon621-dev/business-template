@@ -5,13 +5,8 @@ import uuid
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.modules.rbac.models import Department, Permission, Role, RolePermission, UserRole
+from app.modules.rbac.models import Permission, Role, RolePermission, UserRole
 from app.modules.rbac.schemas import RoleCreateIn, RolePermissionItem
-
-
-async def list_departments(db: AsyncSession):
-    result = await db.execute(select(Department).order_by(Department.depth, Department.name))
-    return result.scalars().all()
 
 
 async def get_role_by_code(db: AsyncSession, code: str) -> Role | None:

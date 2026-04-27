@@ -16,6 +16,7 @@ export interface User {
   fullName: string;
   departmentId: string | null;
   isActive: boolean;
+  lastLoginAt: string | null;
   mustChangePassword: boolean;
   createdAt: string;
   updatedAt: string;
