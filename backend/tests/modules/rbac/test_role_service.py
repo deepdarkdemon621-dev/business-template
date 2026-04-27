@@ -22,7 +22,7 @@ async def seeded_rbac(db_session):
 
 
 @pytest.mark.asyncio
-async def test_role_service_create_ok(db_session) -> None:
+async def test_role_service_create_ok(db_session, db_audit_ctx) -> None:
     svc = RoleService()
     role = await svc.create(
         db_session,
@@ -37,7 +37,7 @@ async def test_role_service_create_ok(db_session) -> None:
 
 
 @pytest.mark.asyncio
-async def test_role_service_create_rejects_duplicate_code(db_session) -> None:
+async def test_role_service_create_rejects_duplicate_code(db_session, db_audit_ctx) -> None:
     svc = RoleService()
     await svc.create(db_session, RoleCreateIn(code="dup_r", name="Dup R"))
     await db_session.commit()
@@ -73,7 +73,7 @@ async def test_role_service_create_rejects_unknown_permission(db_session) -> Non
 
 
 @pytest.mark.asyncio
-async def test_role_service_update_metadata_only(db_session) -> None:
+async def test_role_service_update_metadata_only(db_session, db_audit_ctx) -> None:
     svc = RoleService()
     role = await svc.create(db_session, RoleCreateIn(code="u_meta", name="Old Name"))
     await db_session.commit()
@@ -85,7 +85,7 @@ async def test_role_service_update_metadata_only(db_session) -> None:
 
 
 @pytest.mark.asyncio
-async def test_role_service_update_matrix_replaces_whole_set(db_session) -> None:
+async def test_role_service_update_matrix_replaces_whole_set(db_session, db_audit_ctx) -> None:
     svc = RoleService()
     role = await svc.create(
         db_session,
@@ -129,7 +129,7 @@ async def test_role_service_update_builtin_metadata_refused(db_session, seeded_r
 
 
 @pytest.mark.asyncio
-async def test_role_service_update_builtin_matrix_allowed(db_session, seeded_rbac) -> None:
+async def test_role_service_update_builtin_matrix_allowed(db_session, seeded_rbac, db_audit_ctx) -> None:
     svc = RoleService()
     admin = (await db_session.execute(select(Role).where(Role.code == "admin"))).scalar_one()
 
@@ -162,7 +162,7 @@ async def test_role_service_update_superadmin_refused(db_session, seeded_rbac) -
 
 
 @pytest.mark.asyncio
-async def test_role_service_delete_non_builtin_ok(db_session) -> None:
+async def test_role_service_delete_non_builtin_ok(db_session, db_audit_ctx) -> None:
     svc = RoleService()
     role = await svc.create(db_session, RoleCreateIn(code="del_r", name="Del R"))
     await db_session.commit()

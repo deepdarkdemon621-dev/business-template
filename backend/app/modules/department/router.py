@@ -17,6 +17,7 @@ from app.core.permissions import (
     load_in_scope,
     require_perm,
 )
+from app.modules.audit.context import bind_audit_context
 from app.modules.auth.models import User
 from app.modules.department.crud import (
     build_list_flat_stmt,
@@ -123,7 +124,7 @@ async def get_department_endpoint(
     "/departments",
     response_model=DepartmentOut,
     status_code=201,
-    dependencies=[Depends(require_perm("department:create"))],
+    dependencies=[Depends(require_perm("department:create")), Depends(bind_audit_context)],
 )
 async def create_department_endpoint(
     payload: DepartmentCreateIn,
@@ -139,7 +140,7 @@ async def create_department_endpoint(
 @router.patch(
     "/departments/{dept_id}",
     response_model=DepartmentOut,
-    dependencies=[Depends(require_perm("department:update"))],
+    dependencies=[Depends(require_perm("department:update")), Depends(bind_audit_context)],
 )
 async def update_department_endpoint(
     dept_id: uuid.UUID,
@@ -158,7 +159,7 @@ async def update_department_endpoint(
 @router.post(
     "/departments/{dept_id}/move",
     response_model=DepartmentOut,
-    dependencies=[Depends(require_perm("department:move"))],
+    dependencies=[Depends(require_perm("department:move")), Depends(bind_audit_context)],
 )
 async def move_department_endpoint(
     dept_id: uuid.UUID,
@@ -182,7 +183,7 @@ async def move_department_endpoint(
 @router.delete(
     "/departments/{dept_id}",
     status_code=204,
-    dependencies=[Depends(require_perm("department:delete"))],
+    dependencies=[Depends(require_perm("department:delete")), Depends(bind_audit_context)],
 )
 async def delete_department_endpoint(
     dept_id: uuid.UUID,

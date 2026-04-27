@@ -86,7 +86,7 @@
 
 **Files:**
 - Create: `backend/alembic/versions/0007_plan8_audit_log.py`
-- Test: `backend/tests/migrations/test_migration_0007.py` (create if not present)
+- Test: `backend/tests/migrations/test_0007_migration.py` (create if not present)
 
 - [ ] **Step 1: Write the migration**
 
@@ -405,7 +405,11 @@ class AuditEventDetailOut(AuditEventOut):
     before: dict[str, Any] | None = None
     after: dict[str, Any] | None = None
     changes: dict[str, Any] | None = None
-    metadata: dict[str, Any] | None = Field(default=None, alias="metadata")
+    metadata_: dict[str, Any] | None = Field(
+        default=None,
+        validation_alias="metadata_",
+        serialization_alias="metadata",
+    )
 
 
 class AuditEventFilters(BaseSchema):

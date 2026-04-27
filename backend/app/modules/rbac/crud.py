@@ -5,13 +5,8 @@ import uuid
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.modules.rbac.models import Department, Permission, Role, RolePermission, UserRole
+from app.modules.rbac.models import Permission, Role, RolePermission, UserRole
 from app.modules.rbac.schemas import RoleCreateIn, RolePermissionItem
-
-
-async def list_departments(db: AsyncSession):
-    result = await db.execute(select(Department).order_by(Department.depth, Department.name))
-    return result.scalars().all()
 
 
 async def get_role_by_code(db: AsyncSession, code: str) -> Role | None:
@@ -130,7 +125,7 @@ async def replace_role_permissions(
     session: AsyncSession,
     role_id: uuid.UUID,
     items: list[RolePermissionItem],
-) -> dict[str, list[str]]:
+) -> dict[str, list[dict[str, str]]]:
     """Replace the role's permission set atomically; return a diff summary."""
     current_rows = (
         await session.execute(
@@ -171,4 +166,8 @@ async def replace_role_permissions(
         await _insert_role_permissions(session, role_id, new_items)
 
     await session.flush()
-    return {"added": added, "removed": removed, "scope_changed": scope_changed}
+    return {
+        "added": [{"permission_code": c, "scope": desired[c]} for c in added],
+        "removed": [{"permission_code": c, "scope": current[c][0]} for c in removed],
+        "scope_changed": [{"permission_code": c, "from_scope": current[c][0], "to_scope": desired[c]} for c in scope_changed],
+    }

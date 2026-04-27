@@ -16,6 +16,7 @@ from app.core.permissions import (
     get_user_permissions,
     require_perm,
 )
+from app.modules.audit.context import bind_audit_context
 from app.modules.auth.models import User
 from app.modules.rbac.crud import (
     count_role_users,
@@ -156,7 +157,7 @@ async def _load_role_or_404(db: AsyncSession, role_id: uuid.UUID) -> Role:
     "/roles",
     response_model=RoleDetailOut,
     status_code=201,
-    dependencies=[Depends(require_perm("role:create"))],
+    dependencies=[Depends(require_perm("role:create")), Depends(bind_audit_context)],
 )
 async def create_role_endpoint(
     payload: RoleCreateIn,
@@ -184,7 +185,7 @@ async def create_role_endpoint(
 @router.patch(
     "/roles/{role_id}",
     response_model=RoleDetailOut,
-    dependencies=[Depends(require_perm("role:update"))],
+    dependencies=[Depends(require_perm("role:update")), Depends(bind_audit_context)],
 )
 async def update_role_endpoint(
     role_id: uuid.UUID,
@@ -214,7 +215,7 @@ async def update_role_endpoint(
 @router.delete(
     "/roles/{role_id}",
     response_model=RoleDeletedOut,
-    dependencies=[Depends(require_perm("role:delete"))],
+    dependencies=[Depends(require_perm("role:delete")), Depends(bind_audit_context)],
 )
 async def delete_role_endpoint(
     role_id: uuid.UUID,

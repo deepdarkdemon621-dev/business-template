@@ -57,8 +57,10 @@ async def test_get_role_404(admin_token: tuple[AsyncClient, str]) -> None:
 
 async def test_list_permissions(admin_token: tuple[AsyncClient, str]) -> None:
     client, token = admin_token
+    # size=100 so the assertion is robust to future perm seeds
+    # pushing user:read / role:create past the default page-of-20.
     resp = await client.get(
-        "/api/v1/permissions",
+        "/api/v1/permissions?size=100",
         headers={"Authorization": f"Bearer {token}"},
     )
     assert resp.status_code == 200, resp.text

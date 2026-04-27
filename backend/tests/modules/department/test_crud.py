@@ -20,7 +20,7 @@ pytestmark = pytest.mark.asyncio
 
 
 async def test_create_under_existing_parent_builds_path(
-    db_session: AsyncSession,
+    db_session: AsyncSession, db_audit_ctx
 ) -> None:
     parent = Department(name="Root", path="/root/", depth=0)
     db_session.add(parent)
@@ -35,7 +35,7 @@ async def test_create_under_existing_parent_builds_path(
     assert created.path.endswith("/")
 
 
-async def test_create_with_unknown_parent_raises(db_session: AsyncSession) -> None:
+async def test_create_with_unknown_parent_raises(db_session: AsyncSession, db_audit_ctx) -> None:
     with pytest.raises(ProblemDetails) as ei:
         await create_department(
             db_session,
@@ -44,7 +44,7 @@ async def test_create_with_unknown_parent_raises(db_session: AsyncSession) -> No
     assert ei.value.code == "resource.not-found"
 
 
-async def test_update_renames(db_session: AsyncSession) -> None:
+async def test_update_renames(db_session: AsyncSession, db_audit_ctx) -> None:
     d = Department(name="Old", path="/old/", depth=0)
     db_session.add(d)
     await db_session.flush()
@@ -53,7 +53,7 @@ async def test_update_renames(db_session: AsyncSession) -> None:
     assert updated.name == "New"
 
 
-async def test_soft_delete_toggles_is_active(db_session: AsyncSession) -> None:
+async def test_soft_delete_toggles_is_active(db_session: AsyncSession, db_audit_ctx) -> None:
     d = Department(name="D", path="/d/", depth=0)
     db_session.add(d)
     await db_session.flush()

@@ -9,12 +9,14 @@ import { PasswordResetConfirmPage } from "@/modules/auth/PasswordResetConfirmPag
 import { PasswordChangePage } from "@/modules/auth/PasswordChangePage";
 import { SessionsPage } from "@/modules/auth/SessionsPage";
 import { RequireAuth } from "@/modules/auth/components/RequireAuth";
+import { RequirePermission } from "@/modules/rbac/components/RequirePermission";
 import { DashboardPage } from "@/modules/dashboard/DashboardPage";
 import { UserListPage } from "@/modules/user/UserListPage";
 import { UserEditPage } from "@/modules/user/UserEditPage";
 import { DepartmentListPage } from "@/modules/department/DepartmentListPage";
 import { RoleListPage } from "@/modules/rbac/RoleListPage";
 import { RoleEditPage } from "@/modules/rbac/RoleEditPage";
+import { AuditLogPage } from "@/modules/audit/AuditLogPage";
 
 export default function App() {
   return (
@@ -47,6 +49,14 @@ export default function App() {
               <Route path="/admin/roles/new" element={<RoleEditPage />} />
               <Route path="/admin/roles/:id" element={<RoleEditPage />} />
               <Route path="/admin/departments" element={<DepartmentListPage />} />
+              <Route
+                path="/admin/audit"
+                element={
+                  <RequirePermission permission="audit:list">
+                    <AuditLogPage />
+                  </RequirePermission>
+                }
+              />
             </Route>
           </Routes>
         </PermissionsProvider>

@@ -43,6 +43,7 @@ class UserOut(BaseSchema):
     full_name: str
     department_id: uuid.UUID | None
     is_active: bool
+    last_login_at: datetime | None = None
     must_change_password: bool
     created_at: datetime
     updated_at: datetime

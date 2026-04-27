@@ -26,7 +26,11 @@ export function PermissionsProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();
   const [isSuperadmin, setIsSuperadmin] = useState(false);
   const [permissions, setPermissions] = useState<Record<string, Scope>>({});
-  const [isLoading, setIsLoading] = useState(false);
+  // Start as true so RequirePermission renders null (rather than redirecting to
+  // /403) on first render before the initial /me/permissions fetch completes.
+  // This prevents the race where isLoading=false and permissions={} causes an
+  // erroneous redirect for authenticated users on hard navigation.
+  const [isLoading, setIsLoading] = useState(true);
   const lastFetchRef = useRef<number>(0);
 
   const refetch = useCallback(async () => {
@@ -56,6 +60,11 @@ export function PermissionsProvider({ children }: { children: ReactNode }) {
     else {
       setPermissions({});
       setIsSuperadmin(false);
+      // Do NOT reset isLoading here: RequireAuth will redirect to /login for
+      // unauthenticated users before RequirePermission is ever reached.
+      // Keeping isLoading=true prevents a render where isLoading=false AND
+      // isSuperadmin=false that would incorrectly trigger a /403 redirect
+      // in the gap between auth resolving and the first permissions fetch completing.
     }
   }, [user, refetch]);
 

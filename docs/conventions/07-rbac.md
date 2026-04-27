@@ -26,6 +26,10 @@ Examples: `user:create`, `department:delete`, `form-template:publish`, `ai-analy
 
 Extending the action vocabulary requires a PR review. Don't invent `yeet` or `nuke`.
 
+### Scope of this vocabulary
+
+The fixed action list above governs **permission codes** only (the `action` segment of `permissions.code`). It does NOT govern `audit_events.action`, which is an audit-domain field with its own broader vocabulary (`login`, `logout`, `password_changed`, `session_revoked`, `login_failed`, `password_reset_requested`, `password_reset_consumed`, `pruned`, plus the standard CRUD verbs). Audit verbs describe what happened in the world; permission actions are the gate that authorized it. Conflating them would force every auditable verb to first become a permission code, which is wrong: `auth.login` is not gated by `auth:login` — it's gated by being able to authenticate at all.
+
 ## Scope semantics
 
 | Scope | Row visibility |

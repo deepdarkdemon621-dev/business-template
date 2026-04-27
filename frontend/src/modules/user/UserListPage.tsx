@@ -19,6 +19,16 @@ const columns: ColumnDef<User>[] = [
     header: "强制改密",
     render: (u) => (u.mustChangePassword ? "是" : "否"),
   },
+  {
+    key: "lastLoginAt",
+    header: "上次登入 (Last login)",
+    render: (u) =>
+      u.lastLoginAt ? (
+        new Date(u.lastLoginAt).toLocaleString()
+      ) : (
+        <span className="text-muted-foreground">从未</span>
+      ),
+  },
 ];
 
 export function UserListPage() {

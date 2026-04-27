@@ -27,6 +27,7 @@ __all__ = [
 
 
 async def current_user_dep(
+    request: Request,
     authorization: Annotated[str, Header()] = "",
     session: AsyncSession = Depends(get_session),
 ) -> User:
@@ -34,9 +35,12 @@ async def current_user_dep(
 
     `get_current_user` takes plain (authorization, session) args; this wrapper
     wires them up to FastAPI's Header + Depends system so routes can use it
-    directly via `Depends(current_user_dep)`.
+    directly via `Depends(current_user_dep)`. Also publishes the user on
+    `request.state.user` so audit-context binding can read it.
     """
-    return await get_current_user(authorization, session)
+    user = await get_current_user(authorization, session)
+    request.state.user = user
+    return user
 
 
 PermissionMap = dict[str, ScopeEnum] | object
