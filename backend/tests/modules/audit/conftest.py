@@ -11,8 +11,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.auth import hash_password
 from app.modules.audit.context import AuditContext, audit_context
-from app.modules.rbac.models import Role, UserRole
 from app.modules.auth.models import User
+from app.modules.rbac.models import Role, UserRole
 from tests.modules.rbac.conftest import member_token  # noqa: F401
 from tests.modules.user.conftest import login
 
